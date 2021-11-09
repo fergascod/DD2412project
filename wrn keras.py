@@ -1,13 +1,5 @@
 import tensorflow as tf
 import keras
-
-# import pip
-
-# # # Run of these two for installation
-# pip.main(['install','keras_wrn'])  # pip install keras_wrn --user
-import keras_wrn
-
-import keras
 import keras.backend as K
 from keras.models import Model
 from keras.layers import Dense, Dropout, Add, Input, BatchNormalization, Activation
