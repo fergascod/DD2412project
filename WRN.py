@@ -44,7 +44,8 @@ def build_model(input_dims, output_dim, n, k, M, act="relu", dropout=None):
                  It must satisfy that (N-4)%6 = 0
             - k: Widening factor. WRNs are of the form WRN-N-K
                  It must satisfy that K%2 = 0
-            - input_dims: input dimensions for the model
+            - input_dims: input dimensions for the model.
+                The input input_shape must be (ensemble_size, width,height, channels).
             - output_dim: output dimensions for the model
             - dropout: dropout rate - default=0 (not recomended >0.3)
             - act: activation function - default=relu. Build your custom
@@ -56,9 +57,11 @@ def build_model(input_dims, output_dim, n, k, M, act="relu", dropout=None):
     n = (n - 4) // 6
     # This returns a tensor input to the model
     inputs = Input(shape=(input_dims))
-
+    x = tf.keras.layers.Permute([2, 3, 4, 1])(inputs)
+    x = tf.keras.layers.Reshape(input_dims[1:-1] +
+                                [input_dims[-1] * M])(x)
     # Head of the model
-    x = Conv2D(16, (3, 3), padding="same")(inputs)
+    x = Conv2D(16, (3, 3), padding="same")(x)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
 
@@ -79,12 +82,3 @@ def build_model(input_dims, output_dim, n, k, M, act="relu", dropout=None):
                             )(x)
     model = Model(inputs=inputs, outputs=outputs)
     return model
-
-
-shape, classes = (32, 32, 3), 10
-n, k = 28, 2
-M=3
-
-model = build_model(shape, classes, n, k, M)
-
-print(model.summary())
