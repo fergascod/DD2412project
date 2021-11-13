@@ -76,7 +76,7 @@ def build_model(input_dims, output_dim, n, k, M, act="relu", dropout=None):
 
 
     # noinspection PyCallingNonCallable
-    outputs = MultioutDense(output_dim,M=3,
+    outputs = MultioutDense(output_dim,M=M,
                             kernel_initializer='he_normal',
                             activation="softmax",
                             )(x)
