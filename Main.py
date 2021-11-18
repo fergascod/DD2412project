@@ -5,7 +5,7 @@ from utils import *
 
 
 AUTO = tf.data.AUTOTUNE
-BATCH_SIZE = 4
+BATCH_SIZE = 512
 
 def load_CIFAR_10(M):
 
@@ -20,7 +20,7 @@ def load_CIFAR_10(M):
         for _ in range(M)]
 
     # training on a few examples because it's too slow otherwise, you can remove the [] to train on the full dataset
-    training_data = (tf.data.Dataset.from_tensor_slices((x_train[:128], y_train[:128]))
+    training_data = (tf.data.Dataset.from_tensor_slices((x_train, y_train))
                      .batch(BATCH_SIZE*M).prefetch(AUTO)
                      .map(lambda x,y:(tf.stack([tf.gather(x, indices, axis=0)
                                                 for indices in shuffle_indices], axis=1),
@@ -28,7 +28,7 @@ def load_CIFAR_10(M):
                                                 for indices in shuffle_indices], axis=1)),
                           num_parallel_calls=AUTO, ))
 
-    test_data = (tf.data.Dataset.from_tensor_slices((x_test[:128], y_test[:128]))
+    test_data = (tf.data.Dataset.from_tensor_slices((x_test, y_test))
                  .shuffle(BATCH_SIZE * 100000)
                  .batch(BATCH_SIZE)
                  .prefetch(AUTO))
@@ -126,7 +126,7 @@ base_lr = 0.1
 lr_warmup_epochs = 1
 lr_decay_epochs = [80, 160, 180]
 
-EPOCHS = 2
+EPOCHS = 250
 l2_reg = 3e-4
 
 steps_per_epoch = train_dataset_size // BATCH_SIZE
@@ -164,3 +164,5 @@ for epoch in range(0, EPOCHS):
     for name, metric in test_metrics.items():
         print("{} : {}".format(name,metric.result().numpy()))
         metric.reset_states()
+
+model.save_weights('./checkpoints/my_checkpoint')
