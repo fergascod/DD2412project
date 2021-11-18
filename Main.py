@@ -5,7 +5,7 @@ from utils import *
 
 
 AUTO = tf.data.AUTOTUNE
-BATCH_SIZE = 512
+BATCH_SIZE = 4
 
 def load_CIFAR_10(M):
 
@@ -20,7 +20,7 @@ def load_CIFAR_10(M):
         for _ in range(M)]
 
     # training on a few examples because it's too slow otherwise, you can remove the [] to train on the full dataset
-    training_data = (tf.data.Dataset.from_tensor_slices((x_train[:512], y_train[:512]))
+    training_data = (tf.data.Dataset.from_tensor_slices((x_train[:128], y_train[:128]))
                      .batch(BATCH_SIZE*M).prefetch(AUTO)
                      .map(lambda x,y:(tf.stack([tf.gather(x, indices, axis=0)
                                                 for indices in shuffle_indices], axis=1),
@@ -28,7 +28,7 @@ def load_CIFAR_10(M):
                                                 for indices in shuffle_indices], axis=1)),
                           num_parallel_calls=AUTO, ))
 
-    test_data = (tf.data.Dataset.from_tensor_slices((x_test, y_test))
+    test_data = (tf.data.Dataset.from_tensor_slices((x_test[:128], y_test[:128]))
                  .shuffle(BATCH_SIZE * 100000)
                  .batch(BATCH_SIZE)
                  .prefetch(AUTO))
@@ -45,9 +45,13 @@ def train(tr_dataset, model, optimizer,metrics):
             # get the next batch
             batchX = next(iteratorX)
             images = batchX[0]
+            #print(tf.shape(images))
             labels = tf.squeeze(tf.one_hot(batchX[1], 10))
             with tf.GradientTape() as tape:
                 logits = model(images, training=True)
+                # print("Train logits:", logits)
+                # print(batchX[1])
+                # print("Train labels:", labels)
                 negative_log_likelihood = tf.reduce_mean(tf.reduce_sum(
                     tf.keras.losses.categorical_crossentropy(
                         labels, logits, from_logits=True), axis=1))
@@ -74,6 +78,39 @@ def train(tr_dataset, model, optimizer,metrics):
         except StopIteration:
             # if StopIteration is raised, break from loop
             # print(loss)
+            break
+
+def compute_test_metrics(model, test_data, test_metrics, M):
+    iteratorX = iter(test_data)
+
+    while True:
+        try:
+            # get the next batch
+            batchX = next(iteratorX)
+            images = tf.stack( # Batch
+                        [tf.stack( # Input repetition
+                            [batchX[0][i] for _ in range(M)]
+                        ) for i in range(BATCH_SIZE)])
+
+            logits=model(images)
+
+            labels = tf.squeeze(tf.one_hot(batchX[1], 10))
+            labels = tf.stack( # Batch
+                        [tf.stack( # Input repetition
+                            [labels[i] for _ in range(M)]
+                        ) for i in range(BATCH_SIZE)])
+            probabilities =tf.nn.softmax(tf.reshape(logits, [-1, classes]))
+
+            negative_log_likelihood = tf.reduce_mean(tf.reduce_sum(
+                                    tf.keras.losses.categorical_crossentropy(
+                                    labels, logits, from_logits=True), axis=1))
+
+            test_metrics['test/ece'].update_state(tf.argmax(tf.reshape(labels, [-1,classes]), axis=-1)
+                                              , probabilities)
+            # test_ metrics['test/loss'].update_state(loss)
+            test_metrics['test/negative_log_likelihood'].update_state(negative_log_likelihood)
+            test_metrics['test/accuracy'].update_state(tf.reshape(labels, [-1]), probabilities)
+        except StopIteration:
             break
 
 # Number of subnetworks (baseline=3)
@@ -121,5 +158,9 @@ for epoch in range(0, EPOCHS):
     train(tr_data,model,optimizer, training_metrics)
     print("Epoch: {}".format(epoch))
     for name, metric in training_metrics.items():
+        print("{} : {}".format(name,metric.result().numpy()))
+        metric.reset_states()
+    compute_test_metrics(model, test_data, test_metrics, M)
+    for name, metric in test_metrics.items():
         print("{} : {}".format(name,metric.result().numpy()))
         metric.reset_states()
