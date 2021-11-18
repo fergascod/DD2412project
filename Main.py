@@ -63,6 +63,8 @@ def train(tr_dataset, model, optimizer,metrics):
             grads = tape.gradient(loss, model.trainable_variables)
             optimizer.apply_gradients(zip(grads, model.trainable_variables))
             probabilities = tf.nn.softmax(tf.reshape(logits, [-1, classes]))
+
+            # Train metrics
             metrics['train/ece'].update_state(tf.argmax(tf.reshape(labels, [-1,classes]), axis=-1)
                                               , probabilities)
             metrics['train/loss'].update_state(loss)
@@ -74,9 +76,8 @@ def train(tr_dataset, model, optimizer,metrics):
             # print(loss)
             break
 
-
 # Number of subnetworks (baseline=3)
-M = 1
+M = 3
 
 tr_data, test_data, classes, train_dataset_size,input_shape= load_CIFAR_10(M)
 # WRN params
@@ -88,7 +89,7 @@ base_lr = 0.1
 lr_warmup_epochs = 1
 lr_decay_epochs = [80, 160, 180]
 
-EPOCHS = 250
+EPOCHS = 2
 l2_reg = 3e-4
 
 steps_per_epoch = train_dataset_size // BATCH_SIZE
@@ -121,6 +122,4 @@ for epoch in range(0, EPOCHS):
     print("Epoch: {}".format(epoch))
     for name, metric in training_metrics.items():
         print("{} : {}".format(name,metric.result().numpy()))
-
-
-
+        metric.reset_states()
