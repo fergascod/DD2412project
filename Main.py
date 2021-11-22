@@ -63,7 +63,6 @@ def train(tr_dataset, model, optimizer,metrics):
             labels = tf.squeeze(tf.one_hot(batchX[1], 10))
             with tf.GradientTape() as tape:
                 logits = model(images, training=True)
-                logits= tf.squeeze(logits)
                 negative_log_likelihood = tf.reduce_mean(tf.reduce_sum(
                     tf.squeeze(tf.keras.losses.categorical_crossentropy(
                         labels, logits, from_logits=True)), axis=1))
