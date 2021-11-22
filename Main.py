@@ -65,8 +65,8 @@ def train(tr_dataset, model, optimizer,metrics):
                 logits = model(images, training=True)
                 logits= tf.squeeze(logits)
                 negative_log_likelihood = tf.reduce_mean(tf.reduce_sum(
-                    tf.keras.losses.categorical_crossentropy(
-                        labels, logits, from_logits=True), axis=1))
+                    tf.squeeze(tf.keras.losses.categorical_crossentropy(
+                        labels, logits, from_logits=True)), axis=1))
                 filtered_variables = []
                 # tv= model.trainable_variables
                 for var in model.trainable_variables:
