@@ -60,12 +60,12 @@ def train(tr_dataset, model, optimizer,metrics):
             # get the next batch
             batchX = next(iteratorX)
             images = batchX[0]
-            labels = tf.squeeze(tf.one_hot(batchX[1], 10))
+            labels = tf.squeeze(tf.one_hot(batchX[1], 10),axis=-2)
             with tf.GradientTape() as tape:
                 logits = model(images, training=True)
                 negative_log_likelihood = tf.reduce_mean(tf.reduce_sum(
-                    tf.squeeze(tf.keras.losses.categorical_crossentropy(
-                        labels, logits, from_logits=True)), axis=1))
+                    tf.keras.losses.categorical_crossentropy(
+                        labels, logits, from_logits=True), axis=1))
                 filtered_variables = []
                 # tv= model.trainable_variables
                 for var in model.trainable_variables:
