@@ -36,7 +36,7 @@ def load_CIFAR_10(M):
 
     # training on a few examples because it's too slow otherwise, you can remove the [] to train on the full dataset
     training_data = (tf.data.Dataset.from_tensor_slices((x_train, y_train))
-                     .batch(BATCH_SIZE*M).prefetch(AUTO)
+                     .batch(BATCH_SIZE*M,drop_remainder=True).prefetch(AUTO)
                      .map(lambda x,y:(tf.stack([tf.gather(x, indices, axis=0)
                                                 for indices in shuffle_indices], axis=1),
                                       tf.stack([tf.gather(y, indices, axis=0)
@@ -45,7 +45,7 @@ def load_CIFAR_10(M):
 
     test_data = (tf.data.Dataset.from_tensor_slices((x_test, y_test))
                  .shuffle(BATCH_SIZE * 100000)
-                 .batch(BATCH_SIZE)
+                 .batch(BATCH_SIZE,drop_remainder=True)
                  .prefetch(AUTO))
     classes = tf.unique(tf.reshape(y_train, shape=(-1,)))[0].get_shape().as_list()[0]
     training_size = x_train.shape[0]
@@ -97,8 +97,8 @@ def compute_test_metrics(model, test_data, test_metrics, M):
         try:
             # get the next batch
             batchX = next(iteratorX)
-            images = tf.stack( # Batch
-                        [tf.stack( # Input repetition
+            images = tf.stack(  # Batch
+                        [tf.stack(  # Input repetition
                             [batchX[0][i] for _ in range(M)]
                         ) for i in range(BATCH_SIZE)])
 
@@ -124,7 +124,7 @@ def compute_test_metrics(model, test_data, test_metrics, M):
             break
 
 # Number of subnetworks (baseline=3)
-M = 1
+M = 3
 
 tr_data, test_data, classes, train_dataset_size,input_shape= load_CIFAR_10(M)
 # WRN params
