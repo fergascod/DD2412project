@@ -84,9 +84,9 @@ def train(tr_dataset, model, optimizer,metrics):
             metrics['train/negative_log_likelihood'].update_state(negative_log_likelihood)
             metrics['train/accuracy'].update_state(tf.reshape(labels, [-1]), probabilities)
 
-        except StopIteration:
+        except (StopIteration, tf.errors.OutOfRangeError):
             # if StopIteration is raised, break from loop
-            # print(loss)
+            # print("end of dataset")
             break
 
 
