@@ -1,11 +1,26 @@
 import WRN
 import tensorflow as tf
 from utils import *
-
+import os
 
 
 AUTO = tf.data.AUTOTUNE
-BATCH_SIZE = 512
+BATCH_SIZE = 128 # 512
+RUN_ID = '0000'
+SECTION = 'Cifar10'
+PARENT_FOLDER= os.getcwd()
+RUN_FOLDER = 'run/{}/'.format(SECTION)
+RUN_FOLDER += '_'.join(RUN_ID)
+if not os.path.exists(RUN_FOLDER):
+    os.makedirs(RUN_FOLDER)
+    os.mkdir(os.path.join(RUN_FOLDER, 'weights'))
+    os.mkdir(os.path.join(RUN_FOLDER, 'metrics'))
+
+physical_devices = tf.config.list_physical_devices('GPU')
+for device in physical_devices:
+    tf.config.experimental.set_memory_growth(device, True)
+
+
 
 def load_CIFAR_10(M):
 
@@ -45,13 +60,9 @@ def train(tr_dataset, model, optimizer,metrics):
             # get the next batch
             batchX = next(iteratorX)
             images = batchX[0]
-            #print(tf.shape(images))
             labels = tf.squeeze(tf.one_hot(batchX[1], 10))
             with tf.GradientTape() as tape:
                 logits = model(images, training=True)
-                # print("Train logits:", logits)
-                # print(batchX[1])
-                # print("Train labels:", labels)
                 negative_log_likelihood = tf.reduce_mean(tf.reduce_sum(
                     tf.keras.losses.categorical_crossentropy(
                         labels, logits, from_logits=True), axis=1))
@@ -67,8 +78,6 @@ def train(tr_dataset, model, optimizer,metrics):
             grads = tape.gradient(loss, model.trainable_variables)
             optimizer.apply_gradients(zip(grads, model.trainable_variables))
             probabilities = tf.nn.softmax(tf.reshape(logits, [-1, classes]))
-
-            # Train metrics
             metrics['train/ece'].update_state(tf.argmax(tf.reshape(labels, [-1,classes]), axis=-1)
                                               , probabilities)
             metrics['train/loss'].update_state(loss)
@@ -79,6 +88,7 @@ def train(tr_dataset, model, optimizer,metrics):
             # if StopIteration is raised, break from loop
             # print(loss)
             break
+
 
 def compute_test_metrics(model, test_data, test_metrics, M):
     iteratorX = iter(test_data)
@@ -153,9 +163,14 @@ test_metrics = {
 }
 
 model = WRN.build_model(input_shape, classes, n, k, M)
+tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=os.path.join(RUN_FOLDER, 'metrics/logs')
+                                                      ,update_freq='epoch')
+tensorboard_callback.set_model(model)
 print(model.summary())
 for epoch in range(0, EPOCHS):
     train(tr_data,model,optimizer, training_metrics)
+    if (epoch+1) % 50 == 0:
+        model.save_weights(os.path.join(RUN_FOLDER, 'weights/weights_%d.h5' % epoch))
     print("Epoch: {}".format(epoch))
     for name, metric in training_metrics.items():
         print("{} : {}".format(name,metric.result().numpy()))
@@ -165,4 +180,4 @@ for epoch in range(0, EPOCHS):
         print("{} : {}".format(name,metric.result().numpy()))
         metric.reset_states()
 
-model.save_weights('./checkpoints/my_checkpoint')
+model.save_weights(os.path.join(RUN_FOLDER, 'weights/final_weights.h5'))
