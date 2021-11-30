@@ -5,8 +5,8 @@ import os
 
 
 AUTO = tf.data.AUTOTUNE
-BATCH_SIZE = 12 # 512
-RUN_ID = '0000'
+BATCH_SIZE = 512 # 512
+RUN_ID = '0002'
 SECTION = 'Cifar10'
 PARENT_FOLDER= os.getcwd()
 RUN_FOLDER = 'run/{}/'.format(SECTION)
@@ -63,14 +63,9 @@ def train(tr_dataset, model, optimizer,metrics):
             labels = tf.squeeze(tf.one_hot(batchX[1], 10),axis=-2)
             with tf.GradientTape() as tape:
                 logits = model(images, training=True)
-                print(logits)
-                print(tf.nn.softmax(logits))
-                print(labels)
                 negative_log_likelihood = tf.reduce_mean(tf.reduce_sum(
                     tf.keras.losses.categorical_crossentropy(
                         labels, logits, from_logits=True), axis=1))
-                print(tf.keras.losses.categorical_crossentropy(
-                    labels, logits, from_logits=True))
                 filtered_variables = []
                 # tv= model.trainable_variables
                 for var in model.trainable_variables:
@@ -103,11 +98,11 @@ def compute_test_metrics(model, test_data, test_metrics, M):
             # get the next batch
             batchX = next(iteratorX)
             images = tf.stack(  # Batch
-                        [tf.stack(  # Input repetition
-                            [batchX[0][i] for _ in range(M)]
-                        ) for i in range(BATCH_SIZE)])
+                [tf.stack(  # Input repetition
+                    [batchX[0][i] for _ in range(M)]
+                ) for i in range(BATCH_SIZE)])
 
-            logits=model(images)
+            logits = model(images)
 
             labels = tf.squeeze(tf.one_hot(batchX[1], 10))
             labels = tf.stack( # Batch
@@ -115,13 +110,13 @@ def compute_test_metrics(model, test_data, test_metrics, M):
                             [labels[i] for _ in range(M)]
                         ) for i in range(BATCH_SIZE)])
             probabilities =tf.nn.softmax(tf.reshape(logits, [-1, classes]))
-            print(probabilities)
-            negative_log_likelihood = tf.reduce_mean(tf.reduce_sum(
-                                    tf.keras.losses.categorical_crossentropy(
-                                    labels, logits, from_logits=True), axis=1))
 
-            test_metrics['test/ece'].update_state(tf.argmax(tf.reshape(labels, [-1,classes]), axis=-1)
-                                              , probabilities)
+            negative_log_likelihood = tf.reduce_mean(tf.reduce_sum(
+                tf.keras.losses.categorical_crossentropy(
+                    labels, logits, from_logits=True), axis=1))
+
+            test_metrics['test/ece'].update_state(tf.argmax(tf.reshape(labels, [-1, classes]), axis=-1)
+                                                  , probabilities)
             # test_ metrics['test/loss'].update_state(loss)
             test_metrics['test/negative_log_likelihood'].update_state(negative_log_likelihood)
             test_metrics['test/accuracy'].update_state(tf.reshape(labels, probabilities.shape), probabilities)
@@ -185,4 +180,4 @@ for epoch in range(0, EPOCHS):
         print("{} : {}".format(name,metric.result().numpy()))
         metric.reset_states()
 
-#model.save_weights(os.path.join(RUN_FOLDER, 'weights/final_weights.h5'))
+model.save_weights(os.path.join(RUN_FOLDER, 'weights/final_weights.h5'))
