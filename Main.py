@@ -5,7 +5,7 @@ import os
 
 
 AUTO = tf.data.AUTOTUNE
-BATCH_SIZE = 128 # 512
+BATCH_SIZE = 12 # 512
 RUN_ID = '0000'
 SECTION = 'Cifar10'
 PARENT_FOLDER= os.getcwd()
@@ -63,9 +63,14 @@ def train(tr_dataset, model, optimizer,metrics):
             labels = tf.squeeze(tf.one_hot(batchX[1], 10),axis=-2)
             with tf.GradientTape() as tape:
                 logits = model(images, training=True)
+                print(logits)
+                print(tf.nn.softmax(logits))
+                print(labels)
                 negative_log_likelihood = tf.reduce_mean(tf.reduce_sum(
                     tf.keras.losses.categorical_crossentropy(
                         labels, logits, from_logits=True), axis=1))
+                print(tf.keras.losses.categorical_crossentropy(
+                    labels, logits, from_logits=True))
                 filtered_variables = []
                 # tv= model.trainable_variables
                 for var in model.trainable_variables:
@@ -82,7 +87,7 @@ def train(tr_dataset, model, optimizer,metrics):
                                               , probabilities)
             metrics['train/loss'].update_state(loss)
             metrics['train/negative_log_likelihood'].update_state(negative_log_likelihood)
-            metrics['train/accuracy'].update_state(tf.reshape(labels, [-1]), probabilities)
+            metrics['train/accuracy'].update_state(tf.reshape(labels, probabilities.shape), probabilities)
 
         except (StopIteration, tf.errors.OutOfRangeError):
             # if StopIteration is raised, break from loop
@@ -110,7 +115,7 @@ def compute_test_metrics(model, test_data, test_metrics, M):
                             [labels[i] for _ in range(M)]
                         ) for i in range(BATCH_SIZE)])
             probabilities =tf.nn.softmax(tf.reshape(logits, [-1, classes]))
-
+            print(probabilities)
             negative_log_likelihood = tf.reduce_mean(tf.reduce_sum(
                                     tf.keras.losses.categorical_crossentropy(
                                     labels, logits, from_logits=True), axis=1))
@@ -119,7 +124,7 @@ def compute_test_metrics(model, test_data, test_metrics, M):
                                               , probabilities)
             # test_ metrics['test/loss'].update_state(loss)
             test_metrics['test/negative_log_likelihood'].update_state(negative_log_likelihood)
-            test_metrics['test/accuracy'].update_state(tf.reshape(labels, [-1]), probabilities)
+            test_metrics['test/accuracy'].update_state(tf.reshape(labels, probabilities.shape), probabilities)
         except StopIteration:
             break
 
@@ -180,4 +185,4 @@ for epoch in range(0, EPOCHS):
         print("{} : {}".format(name,metric.result().numpy()))
         metric.reset_states()
 
-model.save_weights(os.path.join(RUN_FOLDER, 'weights/final_weights.h5'))
+#model.save_weights(os.path.join(RUN_FOLDER, 'weights/final_weights.h5'))
