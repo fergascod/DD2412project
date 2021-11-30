@@ -5,7 +5,7 @@ import os
 
 
 AUTO = tf.data.AUTOTUNE
-BATCH_SIZE = 512 # 512
+BATCH_SIZE = 256 # 512
 RUN_ID = '0002'
 SECTION = 'Cifar10'
 PARENT_FOLDER= os.getcwd()
