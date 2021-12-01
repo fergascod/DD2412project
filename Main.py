@@ -6,7 +6,7 @@ import pickle
 
 
 AUTO = tf.data.AUTOTUNE
-BATCH_SIZE = 2 # 512
+BATCH_SIZE = 256 # 512
 RUN_ID = '0002'
 SECTION = 'Cifar10'
 PARENT_FOLDER= os.getcwd()
@@ -36,15 +36,15 @@ def load_CIFAR_10(M):
         for _ in range(M)]
 
     # training on a few examples because it's too slow otherwise, you can remove the [] to train on the full dataset
-    training_data = (tf.data.Dataset.from_tensor_slices((x_train[:128], y_train[:128]))
+    training_data = (tf.data.Dataset.from_tensor_slices((x_train, y_train))
                      .batch(BATCH_SIZE*M,drop_remainder=True).prefetch(AUTO)
                      .map(lambda x,y:(tf.stack([tf.gather(x, indices, axis=0)
                                                 for indices in shuffle_indices], axis=1),
                                       tf.stack([tf.gather(y, indices, axis=0)
                                                 for indices in shuffle_indices], axis=1)),
-                          num_parallel_calls=AUTO, ))
+                          num_parallel_calls=AUTO, ).shuffle(BATCH_SIZE * 100000))
 
-    test_data = (tf.data.Dataset.from_tensor_slices((x_train[:128], y_train[:128]))
+    test_data = (tf.data.Dataset.from_tensor_slices((x_test, y_test))
                  .shuffle(BATCH_SIZE * 100000)
                  .batch(BATCH_SIZE,drop_remainder=True)
                  .prefetch(AUTO))
@@ -62,6 +62,13 @@ def train(tr_dataset, model, optimizer,metrics):
             batchX = next(iteratorX)
             images = batchX[0]
             labels = tf.squeeze(tf.one_hot(batchX[1], 10),axis=-2)
+            pre_shuffle_im= tf.reshape(images,(-1,images.shape[2],images.shape[3],images.shape[4]))
+            pre_shuffle_lab= tf.reshape(labels,(-1,labels.shape[2]))
+            main_shuffle = tf.random.shuffle(tf.range(BATCH_SIZE*M))
+            shuffled_im = tf.gather(pre_shuffle_im,main_shuffle,axis=0)
+            shufffled_lab = tf.gather(pre_shuffle_lab,main_shuffle,axis=0)
+            images= tf.reshape(shuffled_im,(images.shape))
+            labels = tf.reshape(shufffled_lab,(labels.shape))
             with tf.GradientTape() as tape:
                 logits = model(images, training=True)
                 negative_log_likelihood = tf.reduce_mean(tf.reduce_sum(
@@ -137,7 +144,7 @@ base_lr = 0.1
 lr_warmup_epochs = 1
 lr_decay_epochs = [80, 160, 180]
 
-EPOCHS = 2 #250
+EPOCHS = 250
 l2_reg = 3e-4
 
 steps_per_epoch = train_dataset_size // BATCH_SIZE
