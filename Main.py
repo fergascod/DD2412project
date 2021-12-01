@@ -2,10 +2,11 @@ import WRN
 import tensorflow as tf
 from utils import *
 import os
+import pickle
 
 
 AUTO = tf.data.AUTOTUNE
-BATCH_SIZE = 256 # 512
+BATCH_SIZE = 2 # 512
 RUN_ID = '0002'
 SECTION = 'Cifar10'
 PARENT_FOLDER= os.getcwd()
@@ -35,7 +36,7 @@ def load_CIFAR_10(M):
         for _ in range(M)]
 
     # training on a few examples because it's too slow otherwise, you can remove the [] to train on the full dataset
-    training_data = (tf.data.Dataset.from_tensor_slices((x_train, y_train))
+    training_data = (tf.data.Dataset.from_tensor_slices((x_train[:128], y_train[:128]))
                      .batch(BATCH_SIZE*M,drop_remainder=True).prefetch(AUTO)
                      .map(lambda x,y:(tf.stack([tf.gather(x, indices, axis=0)
                                                 for indices in shuffle_indices], axis=1),
@@ -43,7 +44,7 @@ def load_CIFAR_10(M):
                                                 for indices in shuffle_indices], axis=1)),
                           num_parallel_calls=AUTO, ))
 
-    test_data = (tf.data.Dataset.from_tensor_slices((x_test, y_test))
+    test_data = (tf.data.Dataset.from_tensor_slices((x_train[:128], y_train[:128]))
                  .shuffle(BATCH_SIZE * 100000)
                  .batch(BATCH_SIZE,drop_remainder=True)
                  .prefetch(AUTO))
@@ -136,7 +137,7 @@ base_lr = 0.1
 lr_warmup_epochs = 1
 lr_decay_epochs = [80, 160, 180]
 
-EPOCHS = 250
+EPOCHS = 2 #250
 l2_reg = 3e-4
 
 steps_per_epoch = train_dataset_size // BATCH_SIZE
@@ -167,17 +168,29 @@ tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=os.path.join(RUN_F
                                                       ,update_freq='epoch')
 tensorboard_callback.set_model(model)
 print(model.summary())
+train_metrics_evolution=[]
+test_metrics_evolution=[]
+
 for epoch in range(0, EPOCHS):
     train(tr_data,model,optimizer, training_metrics)
     if (epoch+1) % 50 == 0:
         model.save_weights(os.path.join(RUN_FOLDER, 'weights/weights_%d.h5' % epoch))
     print("Epoch: {}".format(epoch))
+    train_metric={}
     for name, metric in training_metrics.items():
+        train_metric[name]=metric.result().numpy()
         print("{} : {}".format(name,metric.result().numpy()))
         metric.reset_states()
+    train_metrics_evolution.append(train_metric)
     compute_test_metrics(model, test_data, test_metrics, M)
+    test_metric={}
     for name, metric in test_metrics.items():
+        test_metric[name]=metric.result().numpy()
         print("{} : {}".format(name,metric.result().numpy()))
         metric.reset_states()
+    test_metrics_evolution.append(test_metric)
 
 model.save_weights(os.path.join(RUN_FOLDER, 'weights/final_weights.h5'))
+metrics_evo = (train_metrics_evolution, test_metrics_evolution)
+with open(os.path.join(RUN_FOLDER, 'metrics/metrics_evo.pickle'), 'wb') as f:
+    pickle.dump(metrics_evo, f)
