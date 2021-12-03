@@ -27,7 +27,6 @@ for device in physical_devices:
 def load_CIFAR_10(M):
 
     (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
-
     batch_repetition=1
     main_shuffle = tf.random.shuffle(tf.tile(tf.range(BATCH_SIZE), [batch_repetition]))
     to_shuffle = tf.shape(main_shuffle)[0]
@@ -47,11 +46,9 @@ def load_CIFAR_10(M):
 
     test_data = (tf.data.Dataset.from_tensor_slices((x_test, y_test))
                  .batch(BATCH_SIZE*M,drop_remainder=True).prefetch(AUTO)
-                 .map(lambda x,y:(tf.stack([tf.gather(x, indices, axis=0)
-                                            for indices in shuffle_indices], axis=1),
-                                  tf.stack([tf.gather(y, indices, axis=0)
-                                            for indices in shuffle_indices], axis=1)),
-                      num_parallel_calls=AUTO, ).shuffle(BATCH_SIZE * 100000))
+                 .map(lambda x,y:(tf.stack([x]*M, axis=1),
+                                  tf.stack([y]*M, axis=1)),
+                      num_parallel_calls=AUTO, ))
     classes = tf.unique(tf.reshape(y_train, shape=(-1,)))[0].get_shape().as_list()[0]
     training_size = x_train.shape[0]
     input_dim = training_data.element_spec[0].shape[1:]
@@ -66,6 +63,7 @@ def train(tr_dataset, model, optimizer,metrics):
             batchX = next(iteratorX)
             images = batchX[0]
             labels = tf.squeeze(tf.one_hot(batchX[1], 10),axis=-2)
+            #print(labels)
             pre_shuffle_im= tf.reshape(images,(-1,images.shape[2],images.shape[3],images.shape[4]))
             pre_shuffle_lab= tf.reshape(labels,(-1,labels.shape[2]))
             main_shuffle = tf.random.shuffle(tf.range(BATCH_SIZE*M))
@@ -111,7 +109,7 @@ def compute_test_metrics(model, test_data, test_metrics, M):
             batchX = next(iteratorX)
             images = batchX[0]
             labels = tf.squeeze(tf.one_hot(batchX[1], 10))
-
+            print(labels)
             logits = model(images)
             probabilities =tf.nn.softmax(tf.reshape(logits, [-1, classes]))
 
