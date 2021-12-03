@@ -111,6 +111,7 @@ def compute_test_metrics(model, test_data, test_metrics, M):
             labels = tf.squeeze(tf.one_hot(batchX[1], 10))
             print(labels)
             logits = model(images)
+            logits = tf.squeeze(logits)
             probabilities =tf.nn.softmax(tf.reshape(logits, [-1, classes]))
 
             negative_log_likelihood = tf.reduce_mean(tf.reduce_sum(
