@@ -109,14 +109,16 @@ def compute_test_metrics(model, test_data, test_metrics, M):
             batchX = next(iteratorX)
             images = batchX[0]
             labels = tf.squeeze(tf.one_hot(batchX[1], 10))
-            print(labels)
             logits = model(images)
             logits = tf.squeeze(logits)
             probabilities =tf.nn.softmax(tf.reshape(logits, [-1, classes]))
-
-            negative_log_likelihood = tf.reduce_mean(tf.reduce_sum(
-                tf.keras.losses.categorical_crossentropy(
-                    labels, logits, from_logits=True), axis=1))
+            if M>1:
+                negative_log_likelihood = tf.reduce_mean(tf.reduce_sum(
+                    tf.keras.losses.categorical_crossentropy(
+                        labels, logits, from_logits=True), axis=1))
+            else:
+                negative_log_likelihood = tf.reduce_mean(
+                    tf.keras.losses.categorical_crossentropy(labels, logits, from_logits=True))
 
             test_metrics['test/ece'].update_state(tf.argmax(tf.reshape(labels, [-1, classes]), axis=-1)
                                                   , probabilities)
