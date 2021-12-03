@@ -3,6 +3,7 @@ import tensorflow as tf
 from utils import *
 import os
 import pickle
+import time
 
 
 AUTO = tf.data.AUTOTUNE
@@ -45,9 +46,12 @@ def load_CIFAR_10(M):
                           num_parallel_calls=AUTO, ).shuffle(BATCH_SIZE * 100000))
 
     test_data = (tf.data.Dataset.from_tensor_slices((x_test, y_test))
-                 .shuffle(BATCH_SIZE * 100000)
-                 .batch(BATCH_SIZE,drop_remainder=True)
-                 .prefetch(AUTO))
+                 .batch(BATCH_SIZE*M,drop_remainder=True).prefetch(AUTO)
+                 .map(lambda x,y:(tf.stack([tf.gather(x, indices, axis=0)
+                                            for indices in shuffle_indices], axis=1),
+                                  tf.stack([tf.gather(y, indices, axis=0)
+                                            for indices in shuffle_indices], axis=1)),
+                      num_parallel_calls=AUTO, ).shuffle(BATCH_SIZE * 100000))
     classes = tf.unique(tf.reshape(y_train, shape=(-1,)))[0].get_shape().as_list()[0]
     training_size = x_train.shape[0]
     input_dim = training_data.element_spec[0].shape[1:]
@@ -105,18 +109,10 @@ def compute_test_metrics(model, test_data, test_metrics, M):
         try:
             # get the next batch
             batchX = next(iteratorX)
-            images = tf.stack(  # Batch
-                [tf.stack(  # Input repetition
-                    [batchX[0][i] for _ in range(M)]
-                ) for i in range(BATCH_SIZE)])
+            images = batchX[0]
+            labels = tf.squeeze(tf.one_hot(batchX[1], 10))
 
             logits = model(images)
-
-            labels = tf.squeeze(tf.one_hot(batchX[1], 10))
-            labels = tf.stack( # Batch
-                        [tf.stack( # Input repetition
-                            [labels[i] for _ in range(M)]
-                        ) for i in range(BATCH_SIZE)])
             probabilities =tf.nn.softmax(tf.reshape(logits, [-1, classes]))
 
             negative_log_likelihood = tf.reduce_mean(tf.reduce_sum(
@@ -137,7 +133,6 @@ M = 3
 tr_data, test_data, classes, train_dataset_size,input_shape= load_CIFAR_10(M)
 # WRN params
 n, k = 28, 10
-
 
 lr_decay_ratio = 0.1
 base_lr = 0.1
@@ -190,6 +185,7 @@ for epoch in range(0, EPOCHS):
         metric.reset_states()
     train_metrics_evolution.append(train_metric)
     compute_test_metrics(model, test_data, test_metrics, M)
+
     test_metric={}
     for name, metric in test_metrics.items():
         test_metric[name]=metric.result().numpy()
