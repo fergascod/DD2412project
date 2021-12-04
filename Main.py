@@ -45,10 +45,11 @@ def load_CIFAR_10(M):
                           num_parallel_calls=AUTO, ).shuffle(BATCH_SIZE * 100000))
 
     test_data = (tf.data.Dataset.from_tensor_slices((x_test, y_test))
-                 .batch(BATCH_SIZE*M,drop_remainder=True).prefetch(AUTO)
-                 .map(lambda x,y:(tf.stack([x]*M, axis=1),
-                                  tf.stack([y]*M, axis=1)),
+                 .batch(BATCH_SIZE,drop_remainder=True).prefetch(AUTO)
+                 .map(lambda x,y:(tf.tile(tf.expand_dims(x, 1), [1, M, 1, 1, 1]),
+                                  tf.tile(tf.expand_dims(y, 1), [1, M, 1])),
                       num_parallel_calls=AUTO, ))
+    print(test_data.element_spec[0])
     classes = tf.unique(tf.reshape(y_train, shape=(-1,)))[0].get_shape().as_list()[0]
     training_size = x_train.shape[0]
     input_dim = training_data.element_spec[0].shape[1:]
@@ -129,7 +130,7 @@ def compute_test_metrics(model, test_data, test_metrics, M):
             break
 
 # Number of subnetworks (baseline=3)
-M = 1
+M = 3
 
 tr_data, test_data, classes, train_dataset_size,input_shape= load_CIFAR_10(M)
 # WRN params
