@@ -36,7 +36,7 @@ def load_CIFAR_10(M):
         for _ in range(M)]
 
     # training on a few examples because it's too slow otherwise, you can remove the [] to train on the full dataset
-    training_data = (tf.data.Dataset.from_tensor_slices((x_train, y_train))
+    training_data = (tf.data.Dataset.from_tensor_slices((x_train[:256], y_train[:256]))
                      .batch(BATCH_SIZE*M,drop_remainder=True).prefetch(AUTO)
                      .map(lambda x,y:(tf.stack([tf.gather(x, indices, axis=0)
                                                 for indices in shuffle_indices], axis=1),
@@ -44,7 +44,7 @@ def load_CIFAR_10(M):
                                                 for indices in shuffle_indices], axis=1)),
                           num_parallel_calls=AUTO, ).shuffle(BATCH_SIZE * 100000))
 
-    test_data = (tf.data.Dataset.from_tensor_slices((x_test, y_test))
+    test_data = (tf.data.Dataset.from_tensor_slices((x_test[:256], y_test[:256]))
                  .batch(BATCH_SIZE,drop_remainder=True).prefetch(AUTO)
                  .map(lambda x,y:(tf.tile(tf.expand_dims(x, 1), [1, M, 1, 1, 1]),
                                   tf.tile(tf.expand_dims(y, 1), [1, M, 1])),
@@ -117,14 +117,13 @@ def compute_test_metrics(model, test_data, test_metrics, M):
                 log_likelihoods = tf.reduce_mean(tf.reduce_sum(
                     tf.keras.losses.categorical_crossentropy(
                         labels, logits, from_logits=True), axis=1))
+                negative_log_likelihood = tf.reduce_mean(
+                    -tf.reduce_logsumexp(log_likelihoods, axis=[1]) +
+                    tf.math.log(float(M)))
+                probabilities = tf.math.reduce_mean(probabilities, axis=1)
             else:
-                log_likelihoods = tf.reduce_mean(
+                negative_log_likelihood = tf.reduce_mean(
                     tf.keras.losses.categorical_crossentropy(labels, logits, from_logits=True))
-
-            negative_log_likelihood = tf.reduce_mean(
-                -tf.reduce_logsumexp(log_likelihoods, axis=[1]) +
-                tf.math.log(float(M)))
-            probabilities = tf.math.reduce_mean(probabilities, axis=1)
 
             test_metrics['test/ece'].update_state(tf.argmax(tf.reshape(labels, [-1, classes]), axis=-1)
                                                   , probabilities)
