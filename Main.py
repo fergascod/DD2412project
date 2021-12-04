@@ -7,7 +7,7 @@ import time
 
 
 AUTO = tf.data.AUTOTUNE
-BATCH_SIZE = 256 # 512
+BATCH_SIZE = 256  # 512
 RUN_ID = '0002'
 SECTION = 'Cifar10'
 PARENT_FOLDER= os.getcwd()
@@ -135,7 +135,7 @@ def compute_test_metrics(model, test_data, test_metrics, M):
             break
 
 # Number of subnetworks (baseline=3)
-M = 3
+M = 1
 
 tr_data, test_data, classes, train_dataset_size,input_shape= load_CIFAR_10(M)
 # WRN params

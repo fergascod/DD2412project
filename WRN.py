@@ -1,13 +1,19 @@
+import functools
+
 import tensorflow as tf
 import keras
 import keras.backend as K
 from keras.models import Model
-from keras.layers import Dense, Dropout, Add, Input, BatchNormalization, Activation
+from keras.layers import Dense, Dropout, Add, Input, Activation
 from keras.layers import Conv2D, MaxPooling2D, AveragePooling2D, Flatten
 from keras.regularizers import l2
 
 from MultioutDense import *
 
+BatchNormalization = functools.partial(  # pylint: disable=invalid-name
+    tf.keras.layers.BatchNormalization,
+    epsilon=1e-5,  # using epsilon and momentum defaults from original paper
+    momentum=0.9)
 
 def main_block(x, filters, n, strides, dropout):
     # Normal part
