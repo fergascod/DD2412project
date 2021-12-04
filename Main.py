@@ -36,7 +36,7 @@ def load_CIFAR_10(M):
         for _ in range(M)]
 
     # training on a few examples because it's too slow otherwise, you can remove the [] to train on the full dataset
-    training_data = (tf.data.Dataset.from_tensor_slices((x_train[:256], y_train[:256]))
+    training_data = (tf.data.Dataset.from_tensor_slices((x_train, y_train))
                      .batch(BATCH_SIZE*M,drop_remainder=True).prefetch(AUTO)
                      .map(lambda x,y:(tf.stack([tf.gather(x, indices, axis=0)
                                                 for indices in shuffle_indices], axis=1),
@@ -44,7 +44,7 @@ def load_CIFAR_10(M):
                                                 for indices in shuffle_indices], axis=1)),
                           num_parallel_calls=AUTO, ).shuffle(BATCH_SIZE * 100000))
 
-    test_data = (tf.data.Dataset.from_tensor_slices((x_test[:256], y_test[:256]))
+    test_data = (tf.data.Dataset.from_tensor_slices((x_test, y_test))
                  .batch(BATCH_SIZE,drop_remainder=True).prefetch(AUTO)
                  .map(lambda x,y:(tf.tile(tf.expand_dims(x, 1), [1, M, 1, 1, 1]),
                                   tf.tile(tf.expand_dims(y, 1), [1, M, 1])),
