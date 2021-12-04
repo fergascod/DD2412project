@@ -48,7 +48,7 @@ def load_CIFAR_10(M):
                  .batch(BATCH_SIZE,drop_remainder=True).prefetch(AUTO)
                  .map(lambda x,y:(tf.tile(tf.expand_dims(x, 1), [1, M, 1, 1, 1]),
                                   tf.tile(tf.expand_dims(y, 1), [1, M, 1])),
-                      num_parallel_calls=AUTO, ))
+                      num_parallel_calls=AUTO, )).shuffle(BATCH_SIZE * 100000)
     classes = tf.unique(tf.reshape(y_train, shape=(-1,)))[0].get_shape().as_list()[0]
     training_size = x_train.shape[0]
     input_dim = training_data.element_spec[0].shape[1:]
@@ -85,6 +85,7 @@ def train(tr_dataset, model, optimizer,metrics):
                 l2_loss = l2_reg * 2 * tf.nn.l2_loss(tf.concat(filtered_variables, axis=0))
                 # tf.nn returns l2 loss divided by 0.5 so we need to double it
                 loss = l2_loss + negative_log_likelihood
+
             grads = tape.gradient(loss, model.trainable_variables)
             optimizer.apply_gradients(zip(grads, model.trainable_variables))
             probabilities = tf.nn.softmax(tf.reshape(logits, [-1, classes]))
@@ -113,12 +114,17 @@ def compute_test_metrics(model, test_data, test_metrics, M):
             logits = tf.squeeze(logits)
             probabilities =tf.nn.softmax(tf.reshape(logits, [-1, classes]))
             if M>1:
-                negative_log_likelihood = tf.reduce_mean(tf.reduce_sum(
+                log_likelihoods = tf.reduce_mean(tf.reduce_sum(
                     tf.keras.losses.categorical_crossentropy(
                         labels, logits, from_logits=True), axis=1))
             else:
-                negative_log_likelihood = tf.reduce_mean(
+                log_likelihoods = tf.reduce_mean(
                     tf.keras.losses.categorical_crossentropy(labels, logits, from_logits=True))
+
+            negative_log_likelihood = tf.reduce_mean(
+                -tf.reduce_logsumexp(log_likelihoods, axis=[1]) +
+                tf.math.log(float(M)))
+            probabilities = tf.math.reduce_mean(probabilities, axis=1)
 
             test_metrics['test/ece'].update_state(tf.argmax(tf.reshape(labels, [-1, classes]), axis=-1)
                                                   , probabilities)
