@@ -49,7 +49,6 @@ def load_CIFAR_10(M):
                  .map(lambda x,y:(tf.tile(tf.expand_dims(x, 1), [1, M, 1, 1, 1]),
                                   tf.tile(tf.expand_dims(y, 1), [1, M, 1])),
                       num_parallel_calls=AUTO, ))
-    print(test_data.element_spec[0])
     classes = tf.unique(tf.reshape(y_train, shape=(-1,)))[0].get_shape().as_list()[0]
     training_size = x_train.shape[0]
     input_dim = training_data.element_spec[0].shape[1:]
