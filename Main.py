@@ -5,10 +5,11 @@ import os
 import pickle
 import time
 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 AUTO = tf.data.AUTOTUNE
 BATCH_SIZE = 256  # 512
-RUN_ID = '0002'
+RUN_ID = '0001'
 SECTION = 'Cifar10'
 PARENT_FOLDER= os.getcwd()
 RUN_FOLDER = 'run/{}/'.format(SECTION)
@@ -181,24 +182,28 @@ train_metrics_evolution=[]
 test_metrics_evolution=[]
 
 for epoch in range(0, EPOCHS):
+    print("Epoch: {}".format(epoch))
+    t1=time.time()
     train(tr_data,model,optimizer, training_metrics)
+    t2=time.time()
     if (epoch+1) % 50 == 0:
         model.save_weights(os.path.join(RUN_FOLDER, 'weights/weights_%d.h5' % epoch))
-    print("Epoch: {}".format(epoch))
     train_metric={}
     for name, metric in training_metrics.items():
         train_metric[name]=metric.result().numpy()
         print("{} : {}".format(name,metric.result().numpy()))
         metric.reset_states()
     train_metrics_evolution.append(train_metric)
+    t3=time.time()
     compute_test_metrics(model, test_data, test_metrics, M)
-
+    t4=time.time()
     test_metric={}
     for name, metric in test_metrics.items():
         test_metric[name]=metric.result().numpy()
         print("{} : {}".format(name,metric.result().numpy()))
         metric.reset_states()
     test_metrics_evolution.append(test_metric)
+    print(f"Epoch took {t4-t1}s. Trainging took {t2-t1}s and testing {t4-t3}s\n")
 
 model.save_weights(os.path.join(RUN_FOLDER, 'weights/final_weights.h5'))
 metrics_evo = (train_metrics_evolution, test_metrics_evolution)
