@@ -36,7 +36,7 @@ def load_CIFAR_10(M):
         for _ in range(M)]
 
     # training on a few examples because it's too slow otherwise, you can remove the [] to train on the full dataset
-    training_data = (tf.data.Dataset.from_tensor_slices((x_train, y_train))
+    training_data = (tf.data.Dataset.from_tensor_slices((x_train[:], y_train[:]))
                      .batch(BATCH_SIZE*M,drop_remainder=True).prefetch(AUTO)
                      .map(lambda x,y:(tf.stack([tf.gather(x, indices, axis=0)
                                                 for indices in shuffle_indices], axis=1),
@@ -44,10 +44,10 @@ def load_CIFAR_10(M):
                                                 for indices in shuffle_indices], axis=1)),
                           num_parallel_calls=AUTO, ).shuffle(BATCH_SIZE * 100000))
 
-    test_data = (tf.data.Dataset.from_tensor_slices((x_test, y_test))
+    test_data = (tf.data.Dataset.from_tensor_slices((x_test[:], y_test[:]))
                  .batch(BATCH_SIZE,drop_remainder=True).prefetch(AUTO)
                  .map(lambda x,y:(tf.tile(tf.expand_dims(x, 1), [1, M, 1, 1, 1]),
-                                  tf.tile(tf.expand_dims(y, 1), [1, M, 1])),
+                                  y),
                       num_parallel_calls=AUTO, )).shuffle(BATCH_SIZE * 100000)
     classes = tf.unique(tf.reshape(y_train, shape=(-1,)))[0].get_shape().as_list()[0]
     training_size = x_train.shape[0]
@@ -112,15 +112,16 @@ def compute_test_metrics(model, test_data, test_metrics, M):
             labels = tf.squeeze(tf.one_hot(batchX[1], 10))
             logits = model(images, training=False)
             logits = tf.squeeze(logits)
-            probabilities =tf.nn.softmax(tf.reshape(logits, [-1, classes]))
+            probabilities =tf.nn.softmax(logits)
             if M>1:
-                log_likelihoods = tf.reduce_mean(tf.reduce_sum(
-                    tf.keras.losses.categorical_crossentropy(
-                        labels, logits, from_logits=True), axis=1))
+                labels_tiled = tf.tile(
+                    tf.expand_dims(labels, 1), [1, M,1])
+                log_likelihoods = -tf.keras.losses.categorical_crossentropy(
+                    labels_tiled, logits, from_logits=True)
                 negative_log_likelihood = tf.reduce_mean(
                     -tf.reduce_logsumexp(log_likelihoods, axis=[1]) +
                     tf.math.log(float(M)))
-                probabilities = tf.math.reduce_mean(probabilities, axis=1)
+                probabilities = tf.math.reduce_mean(probabilities, axis=1)  # marginalize
             else:
                 negative_log_likelihood = tf.reduce_mean(
                     tf.keras.losses.categorical_crossentropy(labels, logits, from_logits=True))
@@ -134,7 +135,7 @@ def compute_test_metrics(model, test_data, test_metrics, M):
             break
 
 # Number of subnetworks (baseline=3)
-M = 1
+M = 3
 
 tr_data, test_data, classes, train_dataset_size,input_shape= load_CIFAR_10(M)
 # WRN params
