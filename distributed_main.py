@@ -2,8 +2,6 @@ import WRN
 import json
 import os
 import sys
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-os.environ.pop('TF_CONFIG', None)
 import tensorflow as tf
 from utils import *
 import os
@@ -16,6 +14,7 @@ AUTO = tf.data.AUTOTUNE
 RUN_ID = '0002'
 SECTION = 'Cifar10'
 PARENT_FOLDER = os.getcwd()
+#os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 physical_devices = tf.config.list_physical_devices('GPU')
 for device in physical_devices:
     tf.config.experimental.set_memory_growth(device, True)
