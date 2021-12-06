@@ -50,10 +50,10 @@ def main():
     batch_repetitions = 1
     BATCH_SIZE = 128
     strategy = tf.distribute.MirroredStrategy()
-    num_workers = 2
-    per_core_batch_size = int(BATCH_SIZE / num_workers)
-    train_batch_size = int(per_core_batch_size / batch_repetitions)
-    test_batch_size= int(per_core_batch_size)
+    n_cores = 2
+    per_core_batch_size = int(BATCH_SIZE / n_cores)
+    train_batch_size = int(per_core_batch_size*n_cores / batch_repetitions)
+    test_batch_size= int(per_core_batch_size*n_cores)
 
     # Number of subnetworks (baseline=3)
     M = 3
@@ -65,7 +65,7 @@ def main():
     n, k = 28, 10
 
     lr_decay_ratio = 0.1
-    base_lr = 0.1 * train_batch_size / 128
+    base_lr = 0.1 * train_batch_size // 128
     lr_warmup_epochs = 1
     lr_decay_epochs = [80, 160, 180]
     EPOCHS = 250

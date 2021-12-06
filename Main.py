@@ -25,10 +25,9 @@ for device in physical_devices:
 
 
 
-def load_CIFAR_10(M):
+def load_CIFAR_10(M,batch_repetition):
 
     (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
-    batch_repetition=1
     main_shuffle = tf.random.shuffle(tf.tile(tf.range(BATCH_SIZE), [batch_repetition]))
     to_shuffle = tf.shape(main_shuffle)[0]
     shuffle_indices = [
@@ -136,13 +135,14 @@ def compute_test_metrics(model, test_data, test_metrics, M):
 
 # Number of subnetworks (baseline=3)
 M = 3
+batch_repetition=1
 
-tr_data, test_data, classes, train_dataset_size,input_shape= load_CIFAR_10(M)
+tr_data, test_data, classes, train_dataset_size,input_shape= load_CIFAR_10(M,batch_repetition)
 # WRN params
 n, k = 28, 10
 
 lr_decay_ratio = 0.1
-base_lr = 0.1/2
+base_lr = 0.1*BATCH_SIZE/batch_repetition/128
 lr_warmup_epochs = 1
 lr_decay_epochs = [80, 160, 180]
 
