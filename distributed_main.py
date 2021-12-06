@@ -31,13 +31,13 @@ def load_CIFAR_10(tr_batch_size, test_batch_size):
     test_data = (tf.data.Dataset.from_tensor_slices((x_test[:], y_test[:]))
                  .batch(test_batch_size, drop_remainder=True).prefetch(AUTO)
                  .shuffle(test_batch_size * 100000).repeat())"""
-
+    ds_info = tfds.builder('cifar10').info
     training_data=tfds.load('cifar10', split='train', shuffle_files=True, batch_size=tr_batch_size)
     test_data = tfds.load('cifar10', split='test', shuffle_files=True, batch_size=test_batch_size)
     classes = tf.unique(tf.reshape(y_train, shape=(-1,)))[0].get_shape().as_list()[0]
-    training_size = x_train.shape[0]
-    test_size = x_test.shape[0]
-    input_dim = training_data.element_spec[0].shape[1:]
+    training_size = ds_info.splits['train'].num_examples
+    test_size = ds_info.splits['test'].num_examples
+    input_dim = list(ds_info.features['image'].shape)
     return training_data, test_data, classes, training_size, test_size, input_dim
 
 
