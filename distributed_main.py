@@ -204,12 +204,12 @@ def main():
             # test_ metrics['test/loss'].update_state(loss)
             test_metrics['test/negative_log_likelihood'].update_state(negative_log_likelihood)
             test_metrics['test/accuracy'].update_state(tf.reshape(labels, probabilities.shape), probabilities)
-            try:
-                strategy.run(step_fn, args=(next(iterator),))
-            except (StopIteration, tf.errors.OutOfRangeError):
-                return
-                # if StopIteration is raised, break from loop
-                # print("end of dataset")
+        try:
+            strategy.run(step_fn, args=(next(iterator),))
+        except (StopIteration, tf.errors.OutOfRangeError):
+            return
+            # if StopIteration is raised, break from loop
+            # print("end of dataset")
 
     train_iterator = iter(tr_data)
     for epoch in range(initial_epoch, EPOCHS):
