@@ -23,11 +23,11 @@ for device in physical_devices:
 def load_CIFAR_10(tr_batch_size, test_batch_size):
     (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
     # training on a few examples because it's too slow otherwise, you can remove the [] to train on the full dataset
-    training_data = (tf.data.Dataset.from_tensor_slices((x_train[:1024], y_train[:1024]))
+    training_data = (tf.data.Dataset.from_tensor_slices((x_train[:], y_train[:]))
                      .batch(tr_batch_size, drop_remainder=True).prefetch(AUTO)
                      .shuffle(tr_batch_size * 100000))
 
-    test_data = (tf.data.Dataset.from_tensor_slices((x_test[:1024], y_test[:1024]))
+    test_data = (tf.data.Dataset.from_tensor_slices((x_test[:], y_test[:]))
                  .batch(test_batch_size, drop_remainder=True).prefetch(AUTO)
                  .shuffle(test_batch_size * 100000))
 
