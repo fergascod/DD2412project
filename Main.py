@@ -41,13 +41,13 @@ def load_CIFAR_10(tr_batch_size, test_batch_size):
                                                 for indices in shuffle_indices], axis=1),
                                       tf.stack([tf.gather(y, indices, axis=0)
                                                 for indices in shuffle_indices], axis=1)),
-                          num_parallel_calls=AUTO, ).shuffle(BATCH_SIZE * 100000))
+                          num_parallel_calls=AUTO, ).shuffle(tr_batch_size * 100000))
 
     test_data = (tf.data.Dataset.from_tensor_slices((x_test[:], y_test[:]))
                  .batch(test_batch_size,drop_remainder=True).prefetch(AUTO)
                  .map(lambda x,y:(tf.tile(tf.expand_dims(x, 1), [1, M, 1, 1, 1]),
                                   y),
-                      num_parallel_calls=AUTO, )).shuffle(BATCH_SIZE * 100000)
+                      num_parallel_calls=AUTO, )).shuffle(test_batch_size * 100000)
 
     classes = tf.unique(tf.reshape(y_train, shape=(-1,)))[0].get_shape().as_list()[0]
     training_size = x_train.shape[0]
