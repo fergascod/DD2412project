@@ -11,11 +11,14 @@ import pickle
 import time
 from absl import logging
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+#os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 AUTO = tf.data.AUTOTUNE
 RUN_ID = '0002'
 SECTION = 'Cifar10'
 PARENT_FOLDER = os.getcwd()
+physical_devices = tf.config.list_physical_devices('GPU')
+for device in physical_devices:
+    tf.config.experimental.set_memory_growth(device, True)
 
 
 def load_CIFAR_10(tr_batch_size, test_batch_size):
@@ -44,9 +47,6 @@ def main():
         os.mkdir(os.path.join(RUN_FOLDER, 'weights'))
         os.mkdir(os.path.join(RUN_FOLDER, 'metrics'))
 
-    physical_devices = tf.config.list_physical_devices('GPU')
-    for device in physical_devices:
-        tf.config.experimental.set_memory_growth(device, True)
 
     batch_repetitions = 1
     BATCH_SIZE = 512
