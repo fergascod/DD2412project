@@ -8,10 +8,10 @@ import time
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 AUTO = tf.data.AUTOTUNE
-BATCH_SIZE = 512  # 512
+BATCH_SIZE = 256  # 512
 RUN_ID = '0002'
 SECTION = 'Cifar10'
-PARENT_FOLDER= os.getcwd()
+PARENT_FOLDER = os.getcwd()
 RUN_FOLDER = 'run/{}/'.format(SECTION)
 RUN_FOLDER += '_'.join(RUN_ID)
 if not os.path.exists(RUN_FOLDER):
@@ -24,53 +24,46 @@ for device in physical_devices:
     tf.config.experimental.set_memory_growth(device, True)
 
 
-
-def load_CIFAR_10(M,batch_repetition):
-
+def load_CIFAR_10(tr_batch_size, test_batch_size):
     (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
-    main_shuffle = tf.random.shuffle(tf.tile(tf.range(BATCH_SIZE), [batch_repetition]))
-    to_shuffle = tf.shape(main_shuffle)[0]
-    shuffle_indices = [
-        tf.concat([tf.random.shuffle(main_shuffle[:to_shuffle]),
-                   main_shuffle[to_shuffle:]], axis=0)
-        for _ in range(M)]
-
     # training on a few examples because it's too slow otherwise, you can remove the [] to train on the full dataset
     training_data = (tf.data.Dataset.from_tensor_slices((x_train[:], y_train[:]))
-                     .batch(BATCH_SIZE*M,drop_remainder=True).prefetch(AUTO)
-                     .map(lambda x,y:(tf.stack([tf.gather(x, indices, axis=0)
-                                                for indices in shuffle_indices], axis=1),
-                                      tf.stack([tf.gather(y, indices, axis=0)
-                                                for indices in shuffle_indices], axis=1)),
-                          num_parallel_calls=AUTO, ).shuffle(BATCH_SIZE * 100000))
+                     .batch(tr_batch_size, drop_remainder=True).prefetch(AUTO)
+                     .shuffle(tr_batch_size * 100000))
 
     test_data = (tf.data.Dataset.from_tensor_slices((x_test[:], y_test[:]))
-                 .batch(BATCH_SIZE,drop_remainder=True).prefetch(AUTO)
-                 .map(lambda x,y:(tf.tile(tf.expand_dims(x, 1), [1, M, 1, 1, 1]),
-                                  y),
-                      num_parallel_calls=AUTO, )).shuffle(BATCH_SIZE * 100000)
+                 .batch(test_batch_size, drop_remainder=True).prefetch(AUTO)
+                 .shuffle(test_batch_size * 100000))
+
     classes = tf.unique(tf.reshape(y_train, shape=(-1,)))[0].get_shape().as_list()[0]
     training_size = x_train.shape[0]
+    test_size = x_test.shape[0]
     input_dim = training_data.element_spec[0].shape[1:]
-    return training_data, test_data, classes,training_size,input_dim
+    return training_data, test_data, classes, training_size, test_size, input_dim
 
 
-def train(tr_dataset, model, optimizer,metrics):
+def train(tr_dataset, batch_repetitions, model, optimizer, metrics):
     iteratorX = iter(tr_dataset)
     while True:
         try:
             # get the next batch
-            batchX = next(iteratorX)
-            images = batchX[0]
-            labels = tf.squeeze(tf.one_hot(batchX[1], 10),axis=-2)
-            #print(labels)
-            pre_shuffle_im= tf.reshape(images,(-1,images.shape[2],images.shape[3],images.shape[4]))
-            pre_shuffle_lab= tf.reshape(labels,(-1,labels.shape[2]))
-            main_shuffle = tf.random.shuffle(tf.range(BATCH_SIZE*M))
-            shuffled_im = tf.gather(pre_shuffle_im,main_shuffle,axis=0)
-            shufffled_lab = tf.gather(pre_shuffle_lab,main_shuffle,axis=0)
-            images= tf.reshape(shuffled_im,(images.shape))
-            labels = tf.reshape(shufffled_lab,(labels.shape))
+            inputs = next(iteratorX)
+            images = inputs[0]
+            labels = tf.squeeze(tf.one_hot(inputs[1], 10), axis=-2)
+            BATCH_SIZE = tf.shape(images)[0]
+
+            main_shuffle = tf.random.shuffle(tf.tile(
+                tf.range(BATCH_SIZE), [batch_repetitions]))
+            to_shuffle = tf.cast(tf.cast(tf.shape(main_shuffle)[0], tf.float32), tf.int32)
+            shuffle_indices = [
+                tf.concat([tf.random.shuffle(main_shuffle[:to_shuffle]),
+                           main_shuffle[to_shuffle:]], axis=0)
+                for _ in range(M)]
+            images = tf.stack([tf.gather(images, indices, axis=0)
+                               for indices in shuffle_indices], axis=1)
+            labels = tf.stack([tf.gather(labels, indices, axis=0)
+                               for indices in shuffle_indices], axis=1)
+
             with tf.GradientTape() as tape:
                 logits = model(images, training=True)
                 negative_log_likelihood = tf.reduce_mean(tf.reduce_sum(
@@ -88,7 +81,7 @@ def train(tr_dataset, model, optimizer,metrics):
             grads = tape.gradient(loss, model.trainable_variables)
             optimizer.apply_gradients(zip(grads, model.trainable_variables))
             probabilities = tf.nn.softmax(tf.reshape(logits, [-1, classes]))
-            metrics['train/ece'].update_state(tf.argmax(tf.reshape(labels, [-1,classes]), axis=-1)
+            metrics['train/ece'].update_state(tf.argmax(tf.reshape(labels, [-1, classes]), axis=-1)
                                               , probabilities)
             metrics['train/loss'].update_state(loss)
             metrics['train/negative_log_likelihood'].update_state(negative_log_likelihood)
@@ -108,13 +101,15 @@ def compute_test_metrics(model, test_data, test_metrics, M):
             # get the next batch
             batchX = next(iteratorX)
             images = batchX[0]
+            images = tf.tile(
+                tf.expand_dims(images, 1), [1, M, 1, 1, 1])
             labels = tf.squeeze(tf.one_hot(batchX[1], 10))
             logits = model(images, training=False)
             logits = tf.squeeze(logits)
-            probabilities =tf.nn.softmax(logits)
-            if M>1:
+            probabilities = tf.nn.softmax(logits)
+            if M > 1:
                 labels_tiled = tf.tile(
-                    tf.expand_dims(labels, 1), [1, M,1])
+                    tf.expand_dims(labels, 1), [1, M, 1])
                 log_likelihoods = -tf.keras.losses.categorical_crossentropy(
                     labels_tiled, logits, from_logits=True)
                 negative_log_likelihood = tf.reduce_mean(
@@ -133,16 +128,18 @@ def compute_test_metrics(model, test_data, test_metrics, M):
         except StopIteration:
             break
 
+
 # Number of subnetworks (baseline=3)
 M = 3
-batch_repetition=1
-
-tr_data, test_data, classes, train_dataset_size,input_shape= load_CIFAR_10(M,batch_repetition)
+batch_repetition = 4
+train_batch_size = int(BATCH_SIZE / batch_repetition)
+test_batch_size = int(BATCH_SIZE)
+tr_data, test_data, classes, train_dataset_size, test_dataset_size, input_shape = load_CIFAR_10(train_batch_size, test_batch_size)
 # WRN params
 n, k = 28, 10
 
-lr_decay_ratio = 0.1
-base_lr = 0.1*BATCH_SIZE/batch_repetition/128
+lr_decay_ratio = 0.2
+base_lr = 0.1 * BATCH_SIZE / batch_repetition / 128
 lr_warmup_epochs = 1
 lr_decay_epochs = [80, 160, 180]
 
@@ -172,37 +169,37 @@ test_metrics = {
     'test/ece': ExpectedCalibrationError(),
 }
 
-model = WRN.build_model(input_shape, classes, n, k, M)
+model = WRN.build_model([M] +input_shape, classes, n, k, M)
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=os.path.join(RUN_FOLDER, 'metrics/logs')
-                                                      ,update_freq='epoch')
+                                                      , update_freq='epoch')
 tensorboard_callback.set_model(model)
 print(model.summary())
-train_metrics_evolution=[]
-test_metrics_evolution=[]
+train_metrics_evolution = []
+test_metrics_evolution = []
 
 for epoch in range(0, EPOCHS):
     print("Epoch: {}".format(epoch))
-    t1=time.time()
-    train(tr_data,model,optimizer, training_metrics)
-    t2=time.time()
-    if (epoch+1) % 50 == 0:
+    t1 = time.time()
+    train(tr_data, batch_repetition, model, optimizer, training_metrics)
+    t2 = time.time()
+    if (epoch + 1) % 50 == 0:
         model.save_weights(os.path.join(RUN_FOLDER, 'weights/weights_%d.h5' % epoch))
-    train_metric={}
+    train_metric = {}
     for name, metric in training_metrics.items():
-        train_metric[name]=metric.result().numpy()
-        print("{} : {}".format(name,metric.result().numpy()))
+        train_metric[name] = metric.result().numpy()
+        print("{} : {}".format(name, metric.result().numpy()))
         metric.reset_states()
     train_metrics_evolution.append(train_metric)
-    t3=time.time()
+    t3 = time.time()
     compute_test_metrics(model, test_data, test_metrics, M)
-    t4=time.time()
-    test_metric={}
+    t4 = time.time()
+    test_metric = {}
     for name, metric in test_metrics.items():
-        test_metric[name]=metric.result().numpy()
-        print("{} : {}".format(name,metric.result().numpy()))
+        test_metric[name] = metric.result().numpy()
+        print("{} : {}".format(name, metric.result().numpy()))
         metric.reset_states()
     test_metrics_evolution.append(test_metric)
-    print(f"Epoch took {t4-t1}s. Trainging took {t2-t1}s and testing {t4-t3}s\n")
+    print(f"Epoch took {t4 - t1}s. Trainging took {t2 - t1}s and testing {t4 - t3}s\n")
 
 model.save_weights(os.path.join(RUN_FOLDER, 'weights/final_weights.h5'))
 metrics_evo = (train_metrics_evolution, test_metrics_evolution)
