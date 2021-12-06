@@ -142,7 +142,7 @@ tr_data, test_data, classes, train_dataset_size,input_shape= load_CIFAR_10(M)
 n, k = 28, 10
 
 lr_decay_ratio = 0.1
-base_lr = 0.1
+base_lr = 0.1/2
 lr_warmup_epochs = 1
 lr_decay_epochs = [80, 160, 180]
 
