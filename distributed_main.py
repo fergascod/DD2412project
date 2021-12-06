@@ -24,16 +24,16 @@ for device in physical_devices:
 def load_CIFAR_10(tr_batch_size, test_batch_size):
     (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
     # training on a few examples because it's too slow otherwise, you can remove the [] to train on the full dataset
-    training_data = (tf.data.Dataset.from_tensor_slices((x_train[:], y_train[:]))
+    """training_data = (tf.data.Dataset.from_tensor_slices((x_train[:], y_train[:]))
                      .batch(tr_batch_size, drop_remainder=True).prefetch(AUTO)
                      .shuffle(tr_batch_size * 100000).repeat())
 
     test_data = (tf.data.Dataset.from_tensor_slices((x_test[:], y_test[:]))
                  .batch(test_batch_size, drop_remainder=True).prefetch(AUTO)
-                 .shuffle(test_batch_size * 100000).repeat())
+                 .shuffle(test_batch_size * 100000).repeat())"""
 
-    #training_data=tfds.load('cifar10', split='train', shuffle_files=True, batch_size=tr_batch_size)
-    #test_data = tfds.load('cifar10', split='test', shuffle_files=True, batch_size=test_batch_size)
+    training_data=tfds.load('cifar10', split='train', shuffle_files=True, batch_size=tr_batch_size)
+    test_data = tfds.load('cifar10', split='test', shuffle_files=True, batch_size=test_batch_size)
     classes = tf.unique(tf.reshape(y_train, shape=(-1,)))[0].get_shape().as_list()[0]
     training_size = x_train.shape[0]
     test_size = x_test.shape[0]
@@ -50,8 +50,8 @@ def main():
         os.mkdir(os.path.join(RUN_FOLDER, 'metrics'))
 
 
-    batch_repetitions = 1
-    BATCH_SIZE = 128
+    batch_repetitions = 4
+    BATCH_SIZE = 256
     strategy = tf.distribute.MirroredStrategy()
     n_cores = 2
     per_core_batch_size = int(BATCH_SIZE / n_cores)
