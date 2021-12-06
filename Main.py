@@ -4,6 +4,7 @@ from utils import *
 import os
 import pickle
 import time
+import matplotlib.pyplot as plt
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
@@ -212,3 +213,20 @@ model.save_weights(os.path.join(RUN_FOLDER, 'weights/final_weights.h5'))
 metrics_evo = (train_metrics_evolution, test_metrics_evolution)
 with open(os.path.join(RUN_FOLDER, 'metrics/metrics_evo.pickle'), 'wb') as f:
     pickle.dump(metrics_evo, f)
+
+metric = "negative_log_likelihood"
+metric_evo_train = []
+metric_evo_test = []
+with (open(os.path.join(RUN_FOLDER, 'metrics/metrics_evo.pickle'), "rb")) as f:
+        metrics_train, metrics_test = pickle.load(f)
+
+epochs = [i for i in range(len(metrics_train))]
+
+for metric_train, metric_test in zip(metrics_train, metrics_test):
+    metric_evo_train.append(metric_train["train/"+metric])
+    metric_evo_test.append(metric_test["test/"+metric])
+
+plt.plot(epochs, metric_evo_train)
+plt.plot(epochs, metric_evo_test)
+plt.title("Evolution of "+metric+" during training")
+plt.show()
