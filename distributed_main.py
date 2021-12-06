@@ -14,7 +14,6 @@ AUTO = tf.data.AUTOTUNE
 RUN_ID = '0002'
 SECTION = 'Cifar10'
 PARENT_FOLDER = os.getcwd()
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 physical_devices = tf.config.list_physical_devices('GPU')
 logging.info("Num GPUs:", len(physical_devices))
 for device in physical_devices:
