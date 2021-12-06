@@ -9,13 +9,14 @@ import pickle
 import time
 from absl import logging
 
-#os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 AUTO = tf.data.AUTOTUNE
 RUN_ID = '0002'
 SECTION = 'Cifar10'
 PARENT_FOLDER = os.getcwd()
-#os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 physical_devices = tf.config.list_physical_devices('GPU')
+logging.info("Num GPUs:", len(physical_devices))
 for device in physical_devices:
     tf.config.experimental.set_memory_growth(device, True)
 
@@ -48,7 +49,7 @@ def main():
 
 
     batch_repetitions = 1
-    BATCH_SIZE = 512
+    BATCH_SIZE = 128
     strategy = tf.distribute.MirroredStrategy()
     num_workers = 2
     per_core_batch_size = int(BATCH_SIZE / num_workers)
