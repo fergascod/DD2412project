@@ -9,7 +9,7 @@ import pickle
 import time
 from absl import logging
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+#os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 AUTO = tf.data.AUTOTUNE
 RUN_ID = '0002'
 SECTION = 'Cifar10'
@@ -201,8 +201,6 @@ def main():
 
 
     train_iterator = iter(tr_data)
-    test_iterator = iter(test_data)
-
     for epoch in range(initial_epoch, EPOCHS):
         logging.info("Epoch: {}".format(epoch))
         t1 = time.time()
@@ -222,7 +220,7 @@ def main():
             metric.reset_states()
         train_metrics_evolution.append(train_metric)
 
-
+        test_iterator = iter(test_data)
         t3 = time.time()
         for step in range(steps_per_eval):
             test_step(test_iterator)
