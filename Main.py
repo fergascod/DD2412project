@@ -8,8 +8,8 @@ import time
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 AUTO = tf.data.AUTOTUNE
-BATCH_SIZE = 256  # 512
-RUN_ID = '0001'
+BATCH_SIZE = 512  # 512
+RUN_ID = '0002'
 SECTION = 'Cifar10'
 PARENT_FOLDER= os.getcwd()
 RUN_FOLDER = 'run/{}/'.format(SECTION)
@@ -78,7 +78,6 @@ def train(tr_dataset, model, optimizer,metrics):
                     tf.keras.losses.categorical_crossentropy(
                         labels, logits, from_logits=True), axis=1))
                 filtered_variables = []
-                # tv= model.trainable_variables
                 for var in model.trainable_variables:
                     if ('kernel' in var.name or 'batch_norm' in var.name or
                             'bias' in var.name):
