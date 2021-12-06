@@ -205,7 +205,7 @@ def main():
                                                   , probabilities)
             # test_ metrics['test/loss'].update_state(loss)
             test_metrics['test/negative_log_likelihood'].update_state(negative_log_likelihood)
-            test_metrics['test/accuracy'].update_state(tf.reshape(labels, probabilities.shape), probabilities)
+            test_metrics['test/accuracy'].update_state(labels, probabilities)
         try:
             strategy.run(step_fn, args=(next(iterator),))
         except (StopIteration, tf.errors.OutOfRangeError):
