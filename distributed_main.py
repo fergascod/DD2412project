@@ -124,9 +124,9 @@ def main():
 
         def step_fn(inputs):
             """Per-Replica step function."""
-
-            images = inputs[0]
-            labels = tf.squeeze(tf.one_hot(inputs[1], 10), axis=-2)
+            a=0
+            images = inputs['image']
+            labels= inputs['label']
             BATCH_SIZE = tf.shape(images)[0]
 
             main_shuffle = tf.random.shuffle(tf.tile(
@@ -140,7 +140,7 @@ def main():
                                for indices in shuffle_indices], axis=1)
             labels = tf.stack([tf.gather(labels, indices, axis=0)
                                for indices in shuffle_indices], axis=1)
-
+            labels = tf.one_hot(labels, 10)
             with tf.GradientTape() as tape:
                 logits = model(images, training=True)
                 negative_log_likelihood = tf.reduce_mean(tf.reduce_sum(
@@ -159,11 +159,12 @@ def main():
             grads = tape.gradient(scaled_loss, model.trainable_variables)
             optimizer.apply_gradients(zip(grads, model.trainable_variables))
             probabilities = tf.nn.softmax(tf.reshape(logits, [-1, classes]))
+            flat_labels = tf.reshape(labels, [-1])
             training_metrics['train/ece'].update_state(tf.argmax(tf.reshape(labels, [-1, classes]), axis=-1)
                                               , probabilities)
             training_metrics['train/loss'].update_state(loss)
             training_metrics['train/negative_log_likelihood'].update_state(negative_log_likelihood)
-            training_metrics['train/accuracy'].update_state(tf.reshape(labels, probabilities.shape), probabilities)
+            training_metrics['train/accuracy'].update_state(flat_labels, probabilities)
 
         try:
             strategy.run(step_fn, args=(next(iterator),))
@@ -179,10 +180,11 @@ def main():
 
         def step_fn(inputs):
             """Per-Replica StepFn."""
-            images = inputs[0]
+            images = inputs['image']
+            labels= inputs['label']
             images = tf.tile(
                 tf.expand_dims(images, 1), [1, M, 1, 1, 1])
-            labels = tf.squeeze(tf.one_hot(inputs[1], 10))
+            labels = tf.one_hot(labels, 10)
             logits = model(images, training=False)
             logits = tf.squeeze(logits)
             probabilities = tf.nn.softmax(logits)
