@@ -17,34 +17,49 @@ BatchNormalization = functools.partial(  # pylint: disable=invalid-name
 
 def main_block(x, filters, n, strides, dropout):
     # Normal part
-    x_res = Conv2D(filters, (3, 3), strides=strides, padding="same")(x)  # , kernel_regularizer=l2(5e-4)
+    x_alt=x
+    x_res=x
+    x_res = BatchNormalization()(x_res)
+    x_res = tf.keras.layers.Activation('relu')(x_res)
+
+    x_res = Conv2D(filters, kernel_size=3, strides=strides, padding="same",
+                   use_bias=False,
+                   kernel_initializer='he_normal')(x_res)
     x_res = BatchNormalization()(x_res)
     x_res = Activation('relu')(x_res)
-    x_res = Conv2D(filters, (3, 3), padding="same")(x_res)
+    x_res = Conv2D(filters, kernel_size=3, padding="same",use_bias=False,
+                   kernel_initializer='he_normal')(x_res)
     # Alternative branch
-    x = Conv2D(filters, (1, 1), strides=strides)(x)
+    if not x_alt.shape.is_compatible_with(x_res.shape):
+        x_alt = Conv2D(filters, kernel_size=1, strides=strides,use_bias=False,
+                       kernel_initializer='he_normal')(x_alt)
     # Merge Branches
-    x = Add()([x_res, x])
+    x = Add()([x_res, x_alt])
     for i in range(n - 1):
         # Residual conection
-        x_res = BatchNormalization()(x)
+        x_alt = x
+        x_res = x
+        x_res = BatchNormalization()(x_res)
         x_res = Activation('relu')(x_res)
-        x_res = Conv2D(filters, (3, 3), padding="same")(x_res)
+        x_res = Conv2D(filters, kernel_size=3,strides=1, padding="same",use_bias=False,
+                       kernel_initializer='he_normal')(x_res)
         # Apply dropout if given
-        if dropout: x_res = Dropout(dropout)(x)
+        if dropout:
+            x_res = Dropout(dropout)(x_res)
         # Second part
         x_res = BatchNormalization()(x_res)
         x_res = Activation('relu')(x_res)
-        x_res = Conv2D(filters, (3, 3), padding="same")(x_res)
+        x_res = Conv2D(filters, kernel_size=3, strides=1,padding="same",use_bias=False,
+                       kernel_initializer='he_normal')(x_res)
+        if not x_alt.shape.is_compatible_with(x_res.shape):
+            x_alt = Conv2D(filters, kernel_size=1, strides=1, use_bias=False,
+                           kernel_initializer='he_normal')(x_alt)
         # Merge branches
-        x = Add()([x, x_res])
-    # Inter block part
-    x = BatchNormalization()(x)
-    x = Activation('relu')(x)
+        x = Add()([x_alt, x_res])
     return x
 
 
-def build_model(input_dims, output_dim, n, k, M, act="relu", dropout=None):
+def build_model(input_dims, output_dim, n, k, M, dropout=False):
     """ Builds the model. Params:
             - n: number of layers. WRNs are of the form WRN-N-K
                  It must satisfy that (N-4)%6 = 0
@@ -67,17 +82,20 @@ def build_model(input_dims, output_dim, n, k, M, act="relu", dropout=None):
     x = tf.keras.layers.Reshape(input_dims[1:-1] +
                                 [input_dims[-1] * M])(x)
     # Head of the model
-    x = Conv2D(16, (3, 3), padding="same")(x)
-    x = BatchNormalization()(x)
-    x = Activation('relu')(x)
-
+    x = Conv2D(filters=16,
+               kernel_size=3,
+               strides=1,
+               padding="same",
+               use_bias=False,
+               kernel_initializer='he_normal')(x)
     # 3 Blocks (normal-residual)
-    x = main_block(x, 16 * k, n, (1, 1), dropout)  # 0
-    x = main_block(x, 32 * k, n, (2, 2), dropout)  # 1
-    x = main_block(x, 64 * k, n, (2, 2), dropout)  # 2
-
+    x = main_block(x, filters=16 * k, n=n, strides=1, dropout=dropout)  # 0
+    x = main_block(x, filters=32 * k, n=n, strides=2, dropout=dropout)  # 1
+    x = main_block(x, filters=64 * k, n=n, strides=2, dropout=dropout)  # 2
+    x = BatchNormalization()(x)
+    x = tf.keras.layers.Activation('relu')(x)
     # Final part of the model
-    x = AveragePooling2D((8, 8))(x)
+    x = AveragePooling2D(pool_size=8)(x)
     x = Flatten()(x)
 
 
