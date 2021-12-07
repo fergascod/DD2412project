@@ -30,16 +30,21 @@ def train(tr_dataset, model, optimizer, metrics, num_labels):
         try:
             # get the next batch
             batchX = next(iteratorX)
-            images = batchX[0]
-            labels = tf.squeeze(tf.one_hot(batchX[1], num_labels),axis=-2)
-            #print(labels)
-            pre_shuffle_im= tf.reshape(images,(-1,images.shape[2],images.shape[3],images.shape[4]))
-            pre_shuffle_lab= tf.reshape(labels,(-1,labels.shape[2]))
-            main_shuffle = tf.random.shuffle(tf.range(BATCH_SIZE*M))
-            shuffled_im = tf.gather(pre_shuffle_im,main_shuffle,axis=0)
-            shufffled_lab = tf.gather(pre_shuffle_lab,main_shuffle,axis=0)
-            images= tf.reshape(shuffled_im,(images.shape))
-            labels = tf.reshape(shufffled_lab,(labels.shape))
+            images = batchX['image']
+            labels= batchX['label']
+            BATCH_SIZE = tf.shape(images)[0]
+            main_shuffle = tf.random.shuffle(tf.tile(
+                tf.range(BATCH_SIZE), [batch_repetitions]))
+            to_shuffle = tf.cast(tf.cast(tf.shape(main_shuffle)[0], tf.float32),tf.int32)
+            shuffle_indices = [
+                tf.concat([tf.random.shuffle(main_shuffle[:to_shuffle]),
+                           main_shuffle[to_shuffle:]], axis=0)
+                for _ in range(M)]
+            images = tf.stack([tf.gather(images, indices, axis=0)
+                               for indices in shuffle_indices], axis=1)
+            labels = tf.stack([tf.gather(labels, indices, axis=0)
+                               for indices in shuffle_indices], axis=1)
+            labels = tf.one_hot(labels, num_labels)
 
             with tf.GradientTape() as tape:
                 logits = model(images, training=True)
@@ -57,32 +62,35 @@ def train(tr_dataset, model, optimizer, metrics, num_labels):
 
             grads = tape.gradient(loss, model.trainable_variables)
             optimizer.apply_gradients(zip(grads, model.trainable_variables))
-            probabilities = tf.nn.softmax(tf.reshape(logits, [-1, classes]))
-            metrics['train/ece'].update_state(tf.argmax(tf.reshape(labels, [-1, classes]), axis=-1)
+            probabilities = tf.nn.softmax(tf.reshape(logits, [-1, num_labels]))
+            flat_labels = tf.reshape(labels, [-1])
+            metrics['train/ece'].update_state(tf.argmax(tf.reshape(labels, [-1, num_labels]), axis=-1)
                                               , probabilities)
             metrics['train/loss'].update_state(loss)
             metrics['train/negative_log_likelihood'].update_state(negative_log_likelihood)
-            metrics['train/accuracy'].update_state(tf.reshape(labels, probabilities.shape), probabilities)
+            metrics['train/accuracy'].update_state(flat_labels, probabilities)
 
         except (StopIteration, tf.errors.OutOfRangeError):
             # if StopIteration is raised, break from loop
             # print("end of dataset")
             break
 
+
+
 # Number of subnetworks (baseline=3)
 M = 3
-num_labels = 10
-batch_repetition = 4
-train_batch_size = int(BATCH_SIZE / batch_repetition)
+batch_repetitions = 4
+train_batch_size = int(BATCH_SIZE / batch_repetitions)
 test_batch_size = int(BATCH_SIZE)
-tr_data, test_data, classes, train_dataset_size, test_dataset_size, input_shape = load_CIFAR(train_batch_size, test_batch_size,
-                                                                                             num_labels, batch_repetition, M,
-                                                                                             AUTO)
+
+# loading function parameters: 'cifar10','cifar100','imagenet' (for now)
+
+tr_data, test_data, num_labels, train_dataset_size, test_dataset_size, input_shape = load_dataset('cifar10', train_batch_size, test_batch_size)
 # WRN params
 n, k = 28, 10
 
 lr_decay_ratio = 0.2
-base_lr = 0.1 * BATCH_SIZE / batch_repetition / 128
+base_lr = 0.1 * BATCH_SIZE / batch_repetitions / 128
 lr_warmup_epochs = 1
 lr_decay_epochs = [80, 160, 180]
 
@@ -112,7 +120,11 @@ test_metrics = {
     'test/ece': ExpectedCalibrationError(),
 }
 
-model = WRN.build_model(input_shape, classes, n, k, M)
+model = WRN.build_model(input_dims=[M] +input_shape,
+                        output_dim=num_labels,
+                        n=n,
+                        k=k,
+                        M=M)
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=os.path.join(RUN_FOLDER, 'metrics/logs')
                                                       , update_freq='epoch')
 tensorboard_callback.set_model(model)
@@ -123,7 +135,7 @@ test_metrics_evolution = []
 for epoch in range(0, EPOCHS):
     print("Epoch: {}".format(epoch))
     t1 = time.time()
-    train(tr_data, model, optimizer, training_metrics, num_labels)
+    train(tr_data, model, optimizer, training_metrics,num_labels)
     t2 = time.time()
     if (epoch + 1) % 50 == 0:
         model.save_weights(os.path.join(RUN_FOLDER, 'weights/weights_%d.h5' % epoch))

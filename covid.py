@@ -42,6 +42,8 @@ def read_dataset(batch_size=128):
         os.getcwd(), labels='inferred', label_mode='int',  validation_split=0.2,subset="validation",
         class_names=None, color_mode='grayscale', batch_size=batch_size,
         image_size=(256,256), shuffle=True, seed=123)
+    os.chdir("..")
+    print(os.getcwd())
     """plt.figure(figsize=(10, 10))
     for images, labels in train_ds.take(1):
         for i in range(9):
@@ -179,7 +181,6 @@ def train(tr_dataset, model, optimizer, metrics, classes):
             labels = tf.stack([tf.gather(labels, indices, axis=0)
                                for indices in shuffle_indices], axis=1)
             labels = tf.one_hot(labels, 4)
-
             with tf.GradientTape() as tape:
                 logits = model(images, training=True)
                 negative_log_likelihood = tf.reduce_mean(tf.reduce_sum(
