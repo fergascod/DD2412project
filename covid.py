@@ -178,7 +178,7 @@ def train(tr_dataset, model, optimizer, metrics, classes):
                                for indices in shuffle_indices], axis=1)
             labels = tf.stack([tf.gather(labels, indices, axis=0)
                                for indices in shuffle_indices], axis=1)
-            labels = tf.one_hot(labels, 10)
+            labels = tf.one_hot(labels, 4)
 
             with tf.GradientTape() as tape:
                 logits = model(images, training=True)
@@ -217,7 +217,7 @@ def compute_test_metrics(model, test_data, test_metrics, classes):
             images = batchX[0]
             images = tf.tile(
                 tf.expand_dims(images, 1), [1, M, 1, 1, 1])
-            labels = tf.one_hot(batchX[1], 10)
+            labels = tf.one_hot(batchX[1], 4)
             logits = model(images, training=False)
             logits = tf.squeeze(logits)
             probabilities = tf.nn.softmax(logits)
