@@ -93,3 +93,70 @@ class ExpectedCalibrationError(tf.keras.metrics.Metric):
                                           self.variables])
 
 
+def load_CIFAR(tr_batch_size, test_batch_size, num_labels, batch_repetition, M, AUTO):
+    if num_labels==10:
+        (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
+    elif num_labels==100:
+        (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar100.load_data()
+    # training on a few examples because it's too slow otherwise, you can remove the [] to train on the full dataset
+    main_shuffle = tf.random.shuffle(tf.tile(tf.range(tr_batch_size), [batch_repetition]))
+    to_shuffle = tf.shape(main_shuffle)[0]
+    shuffle_indices = [
+        tf.concat([tf.random.shuffle(main_shuffle[:to_shuffle]),
+                   main_shuffle[to_shuffle:]], axis=0)
+        for _ in range(M)]
+
+    # training on a few examples because it's too slow otherwise, you can remove the [] to train on the full dataset
+    training_data = (tf.data.Dataset.from_tensor_slices((x_train[:], y_train[:]))
+                     .batch(tr_batch_size*M,drop_remainder=True).prefetch(AUTO)
+                     .map(lambda x,y:(tf.stack([tf.gather(x, indices, axis=0)
+                                                for indices in shuffle_indices], axis=1),
+                                      tf.stack([tf.gather(y, indices, axis=0)
+                                                for indices in shuffle_indices], axis=1)),
+                          num_parallel_calls=AUTO, ).shuffle(tr_batch_size * 100000))
+
+    test_data = (tf.data.Dataset.from_tensor_slices((x_test[:], y_test[:]))
+                 .batch(test_batch_size,drop_remainder=True).prefetch(AUTO)
+                 .map(lambda x,y:(tf.tile(tf.expand_dims(x, 1), [1, M, 1, 1, 1]),
+                                  y),
+                      num_parallel_calls=AUTO, )).shuffle(test_batch_size * 100000)
+
+    classes = tf.unique(tf.reshape(y_train, shape=(-1,)))[0].get_shape().as_list()[0]
+    training_size = x_train.shape[0]
+    test_size = x_test.shape[0]
+    input_dim = training_data.element_spec[0].shape[1:]
+    return training_data, test_data, classes, training_size, test_size, input_dim
+
+
+def compute_test_metrics(model, test_data, test_metrics, M, num_labels):
+    iteratorX = iter(test_data)
+
+    while True:
+        try:
+            # get the next batch
+            batchX = next(iteratorX)
+            images = batchX[0]
+            labels = tf.squeeze(tf.one_hot(batchX[1], num_labels))
+            logits = model(images, training=False)
+            logits = tf.squeeze(logits)
+            probabilities = tf.nn.softmax(logits)
+            if M > 1:
+                labels_tiled = tf.tile(
+                    tf.expand_dims(labels, 1), [1, M, 1])
+                log_likelihoods = -tf.keras.losses.categorical_crossentropy(
+                    labels_tiled, logits, from_logits=True)
+                negative_log_likelihood = tf.reduce_mean(
+                    -tf.reduce_logsumexp(log_likelihoods, axis=[1]) +
+                    tf.math.log(float(M)))
+                probabilities = tf.math.reduce_mean(probabilities, axis=1)  # marginalize
+            else:
+                negative_log_likelihood = tf.reduce_mean(
+                    tf.keras.losses.categorical_crossentropy(labels, logits, from_logits=True))
+
+            test_metrics['test/ece'].update_state(tf.argmax(tf.reshape(labels, [-1, num_labels]), axis=-1)
+                                                  , probabilities)
+            # test_ metrics['test/loss'].update_state(loss)
+            test_metrics['test/negative_log_likelihood'].update_state(negative_log_likelihood)
+            test_metrics['test/accuracy'].update_state(tf.reshape(labels, probabilities.shape), probabilities)
+        except StopIteration:
+            break
