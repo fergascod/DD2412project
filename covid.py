@@ -11,6 +11,7 @@ import logging
 # find the data at https://www.kaggle.com/tawsifurrahman/covid19-radiographyd-database
 # put it in the VM, unzip the archive and the code is good to go!
 """
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 AUTO = tf.data.AUTOTUNE
 RUN_ID = '0001'
@@ -244,4 +245,3 @@ def compute_test_metrics(model, test_data, test_metrics, classes):
 
 if __name__ == '__main__':
     main()
-
