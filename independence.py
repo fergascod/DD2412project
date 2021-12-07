@@ -9,19 +9,9 @@ import matplotlib.pyplot as plt
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-AUTO = tf.data.AUTOTUNE
-
-BATCH_SIZE = 1
-M = 3
-num_labels = 10
-batch_repetition = 1
-train_batch_size = int(BATCH_SIZE / batch_repetition)
-test_batch_size = int(BATCH_SIZE)
-tr_data, test_data, classes, train_dataset_size, test_dataset_size, input_shape = load_CIFAR(train_batch_size, test_batch_size,
-                                                                                             num_labels, batch_repetition, M,
-                                                                                             AUTO)
-n, k = 28, 10
-
+n, k, M = 28, 10, 3
+classes = 10
+input_shape = [M]+[32, 32, 3]
 model = WRN.build_model(input_shape, classes, n, k, M)
 checkpoint_path="run/Cifar10/0_0_0_1/weights/final_weights.h5"
 model.load_weights(checkpoint_path)
@@ -64,6 +54,9 @@ def plot_variance_activations(model, layer_name, x_train):
     var_1, var_2, var_3 = [tf.math.reduce_std(act_tf, axis=0) for act_tf in act_tfs]
     print(var_1, var_2, var_3)
     plt.scatter(var_1, var_2)
+    plt.title("Variance of the activation of the neurons in the NN")
+    plt.xlabel("Variance when changing input 1")
+    plt.xlabel("Variance when changing input 2")
     plt.show()
 
 plot_variance_activations(model, layer_name, x_train)
