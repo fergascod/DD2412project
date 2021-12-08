@@ -37,11 +37,11 @@ def read_dataset(batch_size=128):
     train_ds= tf.keras.utils.image_dataset_from_directory(
         os.getcwd(), labels='inferred', label_mode='int',  validation_split=0.2,subset='training',
         class_names=None, color_mode='grayscale', batch_size=batch_size,
-        image_size=(128,128), shuffle=True, seed=123)
+        image_size=(64,64), shuffle=True, seed=123)
     test_ds= tf.keras.utils.image_dataset_from_directory(
         os.getcwd(), labels='inferred', label_mode='int',  validation_split=0.2,subset="validation",
         class_names=None, color_mode='grayscale', batch_size=batch_size,
-        image_size=(128,128), shuffle=True, seed=123)
+        image_size=(64,64), shuffle=True, seed=123)
     os.chdir("..")
     print(os.getcwd())
     """plt.figure(figsize=(10, 10))
