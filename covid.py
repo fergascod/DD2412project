@@ -37,11 +37,11 @@ def read_dataset(batch_size=128):
     train_ds= tf.keras.utils.image_dataset_from_directory(
         os.getcwd(), labels='inferred', label_mode='int',  validation_split=0.2,subset='training',
         class_names=None, color_mode='grayscale', batch_size=batch_size,
-        image_size=(256,256), shuffle=True, seed=123)
+        image_size=(128,128), shuffle=True, seed=123)
     test_ds= tf.keras.utils.image_dataset_from_directory(
         os.getcwd(), labels='inferred', label_mode='int',  validation_split=0.2,subset="validation",
         class_names=None, color_mode='grayscale', batch_size=batch_size,
-        image_size=(256,256), shuffle=True, seed=123)
+        image_size=(128,128), shuffle=True, seed=123)
     os.chdir("..")
     print(os.getcwd())
     """plt.figure(figsize=(10, 10))
@@ -60,7 +60,7 @@ M = 3
 batch_repetitions = 1
 
 def main():
-    batch_size=128
+    batch_size=64
     training_data, test_data= read_dataset(batch_size)
     input_shape= training_data.element_spec[0].shape[1:]
     train_dataset_size= training_data.cardinality()
