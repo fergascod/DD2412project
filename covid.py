@@ -69,7 +69,7 @@ def main():
     num_classes= len(class_names)
 
     train_batch_size = (batch_size // batch_repetitions)
-    test_batch_size = (batch_size)
+    test_batch_size = batch_size
     steps_per_epoch = train_dataset_size // train_batch_size
     # WRN params
     n, k = 28, 10

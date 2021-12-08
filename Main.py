@@ -89,7 +89,7 @@ tr_data, test_data, num_labels, train_dataset_size, test_dataset_size, input_sha
 n, k = 28, 10
 
 lr_decay_ratio = 0.2
-base_lr = 0.1 * global_batch_size / batch_repetitions / 128
+base_lr = 0.1 * train_batch_size / 128
 lr_warmup_epochs = 1
 EPOCHS = 250
 decay_epochs = [80, 160, 180]
