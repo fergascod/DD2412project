@@ -15,16 +15,18 @@ BatchNormalization = functools.partial(  # pylint: disable=invalid-name
     epsilon=1e-5,  # using epsilon and momentum defaults from original paper
     momentum=0.9)
 
-def main_block(x, filters, n, strides, dropout):
-    # Normal part
-    x_alt=x
-    x_res=x
+def group(inputs,filters, strides, dropout):
+    x_alt=inputs
+    x_res=inputs
     x_res = BatchNormalization()(x_res)
     x_res = tf.keras.layers.Activation('relu')(x_res)
-
     x_res = Conv2D(filters, kernel_size=3, strides=strides, padding="same",
                    use_bias=False,
                    kernel_initializer='he_normal')(x_res)
+    # Apply dropout if given
+    if dropout:
+        x_res = Dropout(dropout)(x_res)
+    # Second part
     x_res = BatchNormalization()(x_res)
     x_res = Activation('relu')(x_res)
     x_res = Conv2D(filters, kernel_size=3, padding="same",use_bias=False,
@@ -35,27 +37,14 @@ def main_block(x, filters, n, strides, dropout):
                        kernel_initializer='he_normal')(x_alt)
     # Merge Branches
     x = Add()([x_res, x_alt])
+    return x
+
+
+
+def main_block(x, filters, n, strides, dropout):
+    x = group(x,filters,strides,dropout=False)
     for i in range(n - 1):
-        # Residual conection
-        x_alt = x
-        x_res = x
-        x_res = BatchNormalization()(x_res)
-        x_res = Activation('relu')(x_res)
-        x_res = Conv2D(filters, kernel_size=3,strides=1, padding="same",use_bias=False,
-                       kernel_initializer='he_normal')(x_res)
-        # Apply dropout if given
-        if dropout:
-            x_res = Dropout(dropout)(x_res)
-        # Second part
-        x_res = BatchNormalization()(x_res)
-        x_res = Activation('relu')(x_res)
-        x_res = Conv2D(filters, kernel_size=3, strides=1,padding="same",use_bias=False,
-                       kernel_initializer='he_normal')(x_res)
-        if not x_alt.shape.is_compatible_with(x_res.shape):
-            x_alt = Conv2D(filters, kernel_size=1, strides=1, use_bias=False,
-                           kernel_initializer='he_normal')(x_alt)
-        # Merge branches
-        x = Add()([x_alt, x_res])
+        x = group(x,filters=filters,strides=1,dropout=dropout)
     return x
 
 

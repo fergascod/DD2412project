@@ -140,7 +140,7 @@ def main():
             grads = tape.gradient(scaled_loss, model.trainable_variables)
             optimizer.apply_gradients(zip(grads, model.trainable_variables))
             probabilities = tf.nn.softmax(tf.reshape(logits, [-1, classes]))
-            flat_labels = tf.reshape(labels, [-1])
+            flat_labels = tf.reshape(labels, [-1, classes])
             training_metrics['train/ece'].update_state(tf.argmax(tf.reshape(labels, [-1, classes]), axis=-1), probabilities)
             training_metrics['train/loss'].update_state(loss)
             training_metrics['train/negative_log_likelihood'].update_state(negative_log_likelihood)
