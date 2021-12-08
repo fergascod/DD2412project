@@ -29,11 +29,11 @@ def group(inputs,filters, strides, dropout):
     # Second part
     x_res = BatchNormalization()(x_res)
     x_res = Activation('relu')(x_res)
-    x_res = Conv2D(filters, kernel_size=3, padding="same",use_bias=False,
+    x_res = Conv2D(filters, kernel_size=3, strides=1, padding="same",use_bias=False,
                    kernel_initializer='he_normal')(x_res)
     # Alternative branch
     if not x_alt.shape.is_compatible_with(x_res.shape):
-        x_alt = Conv2D(filters, kernel_size=1, strides=strides,use_bias=False,
+        x_alt = Conv2D(filters, kernel_size=1, strides=strides,padding='same',use_bias=False,
                        kernel_initializer='he_normal')(x_alt)
     # Merge Branches
     x = Add()([x_res, x_alt])
