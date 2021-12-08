@@ -31,7 +31,7 @@ def main():
         os.mkdir(os.path.join(RUN_FOLDER, 'metrics'))
 
 
-    batch_repetitions = 4
+    batch_repetitions = 1
     global_batch_size = 256
     strategy = tf.distribute.MirroredStrategy()
     n_cores = 2

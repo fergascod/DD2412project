@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 AUTO = tf.data.AUTOTUNE
-BATCH_SIZE = 256  # 512
+global_batch_size = 256  # 512
 RUN_ID = '0003'
 SECTION = 'Cifar10'
 PARENT_FOLDER = os.getcwd()
@@ -32,9 +32,9 @@ def train(tr_dataset, model, optimizer, metrics, num_labels):
             batchX = next(iteratorX)
             images = batchX['image']
             labels= batchX['label']
-            BATCH_SIZE = tf.shape(images)[0]
+            batch_size = tf.shape(images)[0]
             main_shuffle = tf.random.shuffle(tf.tile(
-                tf.range(BATCH_SIZE), [batch_repetitions]))
+                tf.range(batch_size), [batch_repetitions]))
             to_shuffle = tf.cast(tf.cast(tf.shape(main_shuffle)[0], tf.float32),tf.int32)
             shuffle_indices = [
                 tf.concat([tf.random.shuffle(main_shuffle[:to_shuffle]),
@@ -80,24 +80,23 @@ def train(tr_dataset, model, optimizer, metrics, num_labels):
 # Number of subnetworks (baseline=3)
 M = 3
 batch_repetitions = 1
-train_batch_size = int(BATCH_SIZE / batch_repetitions)
-test_batch_size = int(BATCH_SIZE)
+train_batch_size = int(global_batch_size / batch_repetitions)
+test_batch_size = int(global_batch_size)
 
 # loading function parameters: 'cifar10','cifar100','imagenet' (for now)
-
 tr_data, test_data, num_labels, train_dataset_size, test_dataset_size, input_shape = load_dataset('cifar10', train_batch_size, test_batch_size)
 # WRN params
 n, k = 28, 10
 
 lr_decay_ratio = 0.2
-base_lr = 0.1 * BATCH_SIZE / batch_repetitions / 128
+base_lr = 0.1 * global_batch_size / batch_repetitions / 128
 lr_warmup_epochs = 1
 lr_decay_epochs = [80, 160, 180]
 
 EPOCHS = 250
 l2_reg = 3e-4
 
-steps_per_epoch = train_dataset_size // BATCH_SIZE
+steps_per_epoch = train_dataset_size // global_batch_size
 lr_schedule = WarmUpPiecewiseConstantSchedule(
     steps_per_epoch,
     base_lr,
@@ -154,7 +153,7 @@ for epoch in range(0, EPOCHS):
         print("{} : {}".format(name, metric.result().numpy()))
         metric.reset_states()
     test_metrics_evolution.append(test_metric)
-    print(f"Epoch took {t4 - t1}s. Trainging took {t2 - t1}s and testing {t4 - t3}s\n")
+    print(f"Epoch took {t4 - t1}s. Training took {t2 - t1}s and testing {t4 - t3}s\n")
 
 model.save_weights(os.path.join(RUN_FOLDER, 'weights/final_weights.h5'))
 metrics_evo = (train_metrics_evolution, test_metrics_evolution)
