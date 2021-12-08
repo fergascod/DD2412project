@@ -165,7 +165,7 @@ def train(tr_dataset, model, optimizer, metrics, classes):
         try:
             # get the next batch
             batchX = next(iteratorX)
-            images = batchX[0]
+            images = tf.cast(batchX[0], dtype=tf.uint8)
             labels= batchX[1]
             BATCH_SIZE = tf.shape(images)[0]
 
