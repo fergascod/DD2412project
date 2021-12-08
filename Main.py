@@ -64,7 +64,7 @@ def train(tr_dataset, model, optimizer, metrics, num_labels):
             optimizer.apply_gradients(zip(grads, model.trainable_variables))
             probabilities = tf.nn.softmax(tf.reshape(logits, [-1, num_labels]))
             flat_labels = tf.reshape(labels, [-1, num_labels])
-            metrics['train/ece'].update_state(flat_labels, probabilities)
+            metrics['train/ece'].update_state(tf.argmax(flat_labels,axis=-1), probabilities)
             metrics['train/loss'].update_state(loss)
             metrics['train/negative_log_likelihood'].update_state(negative_log_likelihood)
             metrics['train/accuracy'].update_state(flat_labels, probabilities)
