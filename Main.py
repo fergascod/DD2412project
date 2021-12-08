@@ -10,7 +10,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 AUTO = tf.data.AUTOTUNE
 BATCH_SIZE = 256  # 512
-RUN_ID = '0002'
+RUN_ID = '0003'
 SECTION = 'Cifar10'
 PARENT_FOLDER = os.getcwd()
 RUN_FOLDER = 'run/{}/'.format(SECTION)
@@ -79,7 +79,7 @@ def train(tr_dataset, model, optimizer, metrics, num_labels):
 
 # Number of subnetworks (baseline=3)
 M = 3
-batch_repetitions = 4
+batch_repetitions = 1
 train_batch_size = int(BATCH_SIZE / batch_repetitions)
 test_batch_size = int(BATCH_SIZE)
 
