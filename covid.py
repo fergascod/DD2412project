@@ -60,7 +60,7 @@ M = 3
 batch_repetitions = 1
 
 def main():
-    batch_size=64
+    batch_size=16
     training_data, test_data= read_dataset(batch_size)
     input_shape= training_data.element_spec[0].shape[1:]
     train_dataset_size= training_data.cardinality()
