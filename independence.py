@@ -19,7 +19,7 @@ def plot_variance_activations(model, layer_name, x_train):
     ex1, ex2 = random.sample(x_train, 2)
     act_1, act_2, act_3 = [], [], []
 
-    for _ in range(50):
+    for _ in range(5):
         ex3 = random.sample(x_train, 1)[0]
         example1 = [tf.convert_to_tensor(ex3),
                     tf.convert_to_tensor(ex1),
@@ -42,11 +42,14 @@ def plot_variance_activations(model, layer_name, x_train):
     act_tfs = [tf.stack(act) for act in [act_1, act_2, act_3]]
     var_1, var_2, var_3 = [tf.math.reduce_std(act_tf, axis=0) for act_tf in act_tfs]
     print(var_1, var_2, var_3)
+    fig = plt.figure()
+    ax = fig.add_subplot()
     plt.scatter(var_1, var_2, s=1)
     plt.title("Variance of the activation of the neurons in the NN")
     plt.xlabel("Variance when changing input 1")
     plt.ylabel("Variance when changing input 2")
-    plt.savefig('Activation_Variance.png')
+    ax.set_aspect('equal', adjustable='box')
+    plt.savefig('plots/variance/Activation_Variance_0.png')
     plt.show()
 
     fig = plt.figure()
@@ -56,7 +59,7 @@ def plot_variance_activations(model, layer_name, x_train):
     ax.set_xlabel('Variance changing input 1')
     ax.set_ylabel('Variance changing input 2')
     ax.set_zlabel('Variance changing input 3')
-    plt.savefig('plots/variance/Activation_Variance_3D.png')
+    plt.savefig('plots/variance/Activation_Variance_3D_0.png')
     plt.show()
 
 def main():
@@ -64,7 +67,7 @@ def main():
     classes = 10
     input_shape = [M]+[32, 32, 3]
     model = WRN.build_model(input_shape, classes, n, k, M)
-    checkpoint_path="run/Cifar10/0_0_0_3/weights/weights_17.h5"
+    checkpoint_path="run/Cifar10/0_0_0_3/weights_0.h5"
     model.load_weights(checkpoint_path)
 
     # print(model.summary())
