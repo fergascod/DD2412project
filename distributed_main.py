@@ -8,7 +8,7 @@ import os
 import pickle
 import time
 from absl import logging
-import tensorflow_datasets as tfds
+import matplotlib.pyplot as plt
 
 #os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 AUTO = tf.data.AUTOTUNE
@@ -21,28 +21,9 @@ for device in physical_devices:
     tf.config.experimental.set_memory_growth(device, True)
 
 
-def load_CIFAR_10(tr_batch_size, test_batch_size):
-    (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
-    # training on a few examples because it's too slow otherwise, you can remove the [] to train on the full dataset
-    """training_data = (tf.data.Dataset.from_tensor_slices((x_train[:], y_train[:]))
-                     .batch(tr_batch_size, drop_remainder=True).prefetch(AUTO)
-                     .shuffle(tr_batch_size * 100000).repeat())
-
-    test_data = (tf.data.Dataset.from_tensor_slices((x_test[:], y_test[:]))
-                 .batch(test_batch_size, drop_remainder=True).prefetch(AUTO)
-                 .shuffle(test_batch_size * 100000).repeat())"""
-    ds_info = tfds.builder('cifar10').info
-    training_data=tfds.load('cifar10', split='train', shuffle_files=True, batch_size=tr_batch_size)
-    test_data = tfds.load('cifar10', split='test', shuffle_files=True, batch_size=test_batch_size)
-    classes = tf.unique(tf.reshape(y_train, shape=(-1,)))[0].get_shape().as_list()[0]
-    training_size = ds_info.splits['train'].num_examples
-    test_size = ds_info.splits['test'].num_examples
-    input_dim = list(ds_info.features['image'].shape)
-    return training_data, test_data, classes, training_size, test_size, input_dim
-
 
 def main():
-    RUN_FOLDER = 'run/{}/'.format(SECTION)
+    RUN_FOLDER = 'run/distributed{}/'.format(SECTION)
     RUN_FOLDER += '_'.join(RUN_ID)
     if not os.path.exists(RUN_FOLDER):
         os.makedirs(RUN_FOLDER)
@@ -51,17 +32,16 @@ def main():
 
 
     batch_repetitions = 4
-    BATCH_SIZE = 256
+    global_batch_size = 256
     strategy = tf.distribute.MirroredStrategy()
     n_cores = 2
-    per_core_batch_size = int(BATCH_SIZE / n_cores)
+    per_core_batch_size = int(global_batch_size / n_cores)
     train_batch_size = int(per_core_batch_size*n_cores / batch_repetitions)
     test_batch_size= int(per_core_batch_size*n_cores)
 
     # Number of subnetworks (baseline=3)
     M = 3
-    tr_data, test_data, classes,\
-    train_dataset_size, test_dataset_size, input_shape = load_CIFAR_10(train_batch_size,test_batch_size)
+    tr_data, test_data, classes, train_dataset_size, test_dataset_size, input_shape = load_dataset('cifar10',train_batch_size,test_batch_size)
     tr_data = strategy.experimental_distribute_dataset(tr_data)
     test_data = strategy.experimental_distribute_dataset(test_data)
     # WRN params
@@ -124,7 +104,6 @@ def main():
 
         def step_fn(inputs):
             """Per-Replica step function."""
-            a=0
             images = inputs['image']
             labels= inputs['label']
             BATCH_SIZE = tf.shape(images)[0]
@@ -153,15 +132,16 @@ def main():
                         filtered_variables.append(tf.reshape(var, (-1,)))
                 l2_loss = l2_reg * 2 * tf.nn.l2_loss(tf.concat(filtered_variables, axis=0))
                 # tf.nn returns l2 loss divided by 0.5 so we need to double it
+
                 loss = l2_loss + negative_log_likelihood
-                scaled_loss = loss / strategy.num_replicas_in_sync
+                #  FUNDAMENTAL TO SCALE THE LOSS
+                scaled_loss = tf.nn.scale_regularization_loss(loss)
 
             grads = tape.gradient(scaled_loss, model.trainable_variables)
             optimizer.apply_gradients(zip(grads, model.trainable_variables))
             probabilities = tf.nn.softmax(tf.reshape(logits, [-1, classes]))
             flat_labels = tf.reshape(labels, [-1])
-            training_metrics['train/ece'].update_state(tf.argmax(tf.reshape(labels, [-1, classes]), axis=-1)
-                                              , probabilities)
+            training_metrics['train/ece'].update_state(tf.argmax(tf.reshape(labels, [-1, classes]), axis=-1), probabilities)
             training_metrics['train/loss'].update_state(loss)
             training_metrics['train/negative_log_likelihood'].update_state(negative_log_likelihood)
             training_metrics['train/accuracy'].update_state(flat_labels, probabilities)
@@ -169,9 +149,9 @@ def main():
         try:
             strategy.run(step_fn, args=(next(iterator),))
         except (StopIteration, tf.errors.OutOfRangeError):
+            print("end of dataset")
             return
             # if StopIteration is raised, break from loop
-                # print("end of dataset")
 
 
     @tf.function
@@ -209,9 +189,9 @@ def main():
         try:
             strategy.run(step_fn, args=(next(iterator),))
         except (StopIteration, tf.errors.OutOfRangeError):
+            print("end of dataset")
             return
             # if StopIteration is raised, break from loop
-            # print("end of dataset")
 
     train_iterator = iter(tr_data)
     for epoch in range(initial_epoch, EPOCHS):
@@ -253,6 +233,24 @@ def main():
     metrics_evo = (train_metrics_evolution, test_metrics_evolution)
     with open(os.path.join(RUN_FOLDER, 'metrics/metrics_evo.pickle'), 'wb') as f:
         pickle.dump(metrics_evo, f)
+    metric = "negative_log_likelihood"
+    metric_evo_train = []
+    metric_evo_test = []
+    with (open(os.path.join(RUN_FOLDER, 'metrics/metrics_evo.pickle'), "rb")) as f:
+            metrics_train, metrics_test = pickle.load(f)
+
+    epochs = [i for i in range(len(metrics_train))]
+
+    for metric_train, metric_test in zip(metrics_train, metrics_test):
+        metric_evo_train.append(metric_train["train/"+metric])
+        metric_evo_test.append(metric_test["test/"+metric])
+
+    plt.plot(epochs, metric_evo_train,label='training')
+    plt.plot(epochs, metric_evo_test,label='testing')
+    plt.legend()
+    plt.title("Evolution of "+metric+" during training")
+    plt.savefig(os.path.join(RUN_FOLDER,'nll-evolution'))
+
 
 if __name__ == '__main__':
     main()
