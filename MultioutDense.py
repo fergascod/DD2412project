@@ -32,12 +32,9 @@ class MultioutDense(keras.layers.Dense):
         self.ensemble_size = M
 
     def call(self, inputs):
-        batch_size = tf.shape(inputs)[0]
-        # NOTE: This restricts this layer from being called on tensors of ndim > 2.
         outputs = super().call(inputs)
-        outputs = tf.reshape(
-            outputs,
-            [batch_size, self.ensemble_size, self.units // self.ensemble_size])
+        flat_outputs = tf.split(outputs, self.ensemble_size, axis=-1)
+        outputs = tf.stack(flat_outputs, axis=1)
         return outputs
 
 
