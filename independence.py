@@ -1,4 +1,4 @@
-import WRN
+import WRN_old as WRN
 import tensorflow as tf
 from utils import *
 import os
@@ -10,19 +10,6 @@ from mpl_toolkits.mplot3d import Axes3D
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-n, k, M = 28, 10, 3
-classes = 10
-input_shape = [M]+[32, 32, 3]
-model = WRN.build_model(input_shape, classes, n, k, M)
-checkpoint_path="run/Cifar10/0_0_0_1/weights/final_weights.h5"
-model.load_weights(checkpoint_path)
-
-# print(model.summary())
-
-layer_name="conv2d_10"
-
-(x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
-
 def plot_variance_activations(model, layer_name, x_train):
     layer_output=model.get_layer(layer_name).output
     intermediate_model=tf.keras.models.Model(inputs=model.input,outputs=layer_output)
@@ -31,7 +18,7 @@ def plot_variance_activations(model, layer_name, x_train):
     ex1, ex2 = random.sample(x_train, 2)
     act_1, act_2, act_3 = [], [], []
 
-    for _ in range(10):
+    for _ in range(50):
         ex3 = random.sample(x_train, 1)[0]
         example1 = [tf.convert_to_tensor(ex3),
                     tf.convert_to_tensor(ex1),
@@ -68,7 +55,24 @@ def plot_variance_activations(model, layer_name, x_train):
     ax.set_xlabel('Variance changing input 1')
     ax.set_ylabel('Variance changing input 2')
     ax.set_zlabel('Variance changing input 3')
-    plt.savefig('Activation_Variance_3D.png')
+    plt.savefig('plots/variance/Activation_Variance_3D.png')
     plt.show()
 
-plot_variance_activations(model, layer_name, x_train)
+def main():
+    n, k, M = 28, 10, 3
+    classes = 10
+    input_shape = [M]+[32, 32, 3]
+    model = WRN.build_model(input_shape, classes, n, k, M)
+    checkpoint_path="run/Cifar10/0_0_0_1/weights/final_weights.h5"
+    model.load_weights(checkpoint_path)
+
+    # print(model.summary())
+
+    layer_name="conv2d_10"
+
+    (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
+
+    plot_variance_activations(model, layer_name, x_train)
+
+if __name__ == "__main__":
+    main()
