@@ -1,4 +1,5 @@
-import WRN_old as WRN
+# import WRN_old as WRN #For previous runs
+import WRN
 import tensorflow as tf
 from utils import *
 import os
@@ -63,7 +64,7 @@ def main():
     classes = 10
     input_shape = [M]+[32, 32, 3]
     model = WRN.build_model(input_shape, classes, n, k, M)
-    checkpoint_path="run/Cifar10/0_0_0_1/weights/final_weights.h5"
+    checkpoint_path="run/Cifar10/0_0_0_3/weights/weights_17.h5"
     model.load_weights(checkpoint_path)
 
     # print(model.summary())
