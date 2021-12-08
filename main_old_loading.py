@@ -105,7 +105,6 @@ def test(model, test_data, test_metrics, M, num_labels):
 
 
 
-
 def load_CIFAR(tr_batch_size, test_batch_size, num_labels, batch_repetition, M, AUTO):
     if num_labels==10:
         (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
@@ -145,7 +144,7 @@ def load_CIFAR(tr_batch_size, test_batch_size, num_labels, batch_repetition, M, 
 # Number of subnetworks (baseline=3)
 M = 3
 num_labels = 10
-batch_repetitions = 4
+batch_repetitions = 1
 train_batch_size = int(global_batch_size / batch_repetitions)
 test_batch_size = int(global_batch_size)
 
