@@ -91,9 +91,9 @@ n, k = 28, 10
 lr_decay_ratio = 0.2
 base_lr = 0.1 * global_batch_size / batch_repetitions / 128
 lr_warmup_epochs = 1
-lr_decay_epochs = [80, 160, 180]
-
 EPOCHS = 250
+decay_epochs = [80, 160, 180]
+lr_decay_epochs = [(int(start_epoch_str) * EPOCHS) // 200 for start_epoch_str in decay_epochs]
 l2_reg = 3e-4
 
 steps_per_epoch = train_dataset_size // global_batch_size

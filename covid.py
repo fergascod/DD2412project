@@ -68,19 +68,20 @@ def main():
     class_names = training_data.class_names
     num_classes= len(class_names)
 
-    train_batch_size = int(batch_size / batch_repetitions)
-    test_batch_size = int(batch_size)
+    train_batch_size = (batch_size // batch_repetitions)
+    test_batch_size = (batch_size)
+    steps_per_epoch = train_dataset_size // train_batch_size
     # WRN params
     n, k = 28, 10
     lr_decay_ratio = 0.2
-    base_lr = 0.1 * train_batch_size // 128
+    base_lr = 0.1 * train_batch_size / 128
     lr_warmup_epochs = 1
-    lr_decay_epochs = [80, 160, 180]
+    decay_epochs = [80, 160, 180]
     EPOCHS = 250
-    steps_per_epoch = train_dataset_size // train_batch_size
+    lr_decay_epochs= [(int(start_epoch_str) * EPOCHS) // 200 for start_epoch_str in decay_epochs]
     steps_per_eval = test_dataset_size // test_batch_size
     lr_schedule = WarmUpPiecewiseConstantSchedule(
-        steps_per_epoch,
+        float(steps_per_epoch),
         base_lr,
         decay_ratio=lr_decay_ratio,
         decay_epochs=lr_decay_epochs,
@@ -165,7 +166,7 @@ def train(tr_dataset, model, optimizer, metrics, classes):
         try:
             # get the next batch
             batchX = next(iteratorX)
-            images = tf.cast(batchX[0], dtype=tf.uint8)
+            images = batchX[0]
             labels= batchX[1]
             BATCH_SIZE = tf.shape(images)[0]
 
