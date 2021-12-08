@@ -24,4 +24,7 @@ for metric_train, metric_test in zip(metrics_train, metrics_test):
 plt.plot(epochs, metric_evo_train)
 plt.plot(epochs, metric_evo_test)
 plt.title("Evolution of "+metric+" during training")
+plt.xlabel("Epoch")
+plt.ylabel(metric)
+plt.savefig("plots/metrics/"+SECTION+"_"+RUN_ID+"_"+metric+'.png')
 plt.show()
