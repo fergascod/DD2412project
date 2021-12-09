@@ -96,7 +96,7 @@ def main():
     lr_warmup_epochs = 1
     EPOCHS = 250
     decay_epochs = [80, 160, 180]
-    lr_decay_epochs = [(int(start_epoch_str) * EPOCHS) // 200 for start_epoch_str in decay_epochs]
+    lr_decay_epochs = [(int(start_epoch_str) * EPOCHS) // 800 for start_epoch_str in decay_epochs]
 
     steps_per_epoch = train_dataset_size // global_batch_size
     lr_schedule = WarmUpPiecewiseConstantSchedule(
@@ -132,7 +132,7 @@ def main():
     print(model.summary())
     train_metrics_evolution = []
     test_metrics_evolution = []
-
+    patience=0
     for epoch in range(0, EPOCHS):
         print("Epoch: {}".format(epoch))
         t1 = time.time()
@@ -154,8 +154,20 @@ def main():
             test_metric[name] = metric.result().numpy()
             print("{} : {}".format(name, metric.result().numpy()))
             metric.reset_states()
+        # If it's the first epoch test_metrics_evolution is empty and the best NLL is the first one
+        if not test_metrics_evolution:
+            best_nll= test_metric['negative_log_likelihood']
+        else:
+            if test_metric['negative_log_likelihood']>best_nll:
+                patience=patience+1
+            else:
+                best_nll=test_metric['negative_log_likelihood']
+                patience=0
         test_metrics_evolution.append(test_metric)
         print(f"Epoch took {t4 - t1}s. Training took {t2 - t1}s and testing {t4 - t3}s\n")
+        if patience==10:
+            print("Early stopping")
+            break
 
     model.save_weights(os.path.join(RUN_FOLDER, 'weights/final_weights.h5'))
     metrics_evo = (train_metrics_evolution, test_metrics_evolution)
