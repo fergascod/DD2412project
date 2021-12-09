@@ -92,7 +92,7 @@ def main():
     n, k = 28, 10
 
     lr_decay_ratio = 0.2
-    base_lr = 0.1 * train_batch_size / 128
+    base_lr = 0.1
     lr_warmup_epochs = 1
     EPOCHS = 250
     decay_epochs = [80, 160, 180]
