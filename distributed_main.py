@@ -1,4 +1,4 @@
-import WRN
+import WRN_alternative
 import json
 import os
 import sys
@@ -42,8 +42,11 @@ def main():
     # Number of subnetworks (baseline=3)
     M = 3
     tr_data, test_data, classes, train_dataset_size, test_dataset_size, input_shape = load_dataset('cifar10',train_batch_size,test_batch_size)
+    tr_data, test_data= create_M_structure(tr_data, test_data, M, batch_repetitions, train_batch_size, test_batch_size)
+    input_shape= [M]+input_shape
     tr_data = strategy.experimental_distribute_dataset(tr_data)
     test_data = strategy.experimental_distribute_dataset(test_data)
+
     # WRN params
     n, k = 28, 10
 
@@ -79,7 +82,7 @@ def main():
             'test/ece': ExpectedCalibrationError(),
         }
 
-        model = WRN.build_model(input_dims=[M] +input_shape,
+        model = WRN_alternative.build_model(input_dims=input_shape,
                                 output_dim=classes,
                                 n=n,
                                 k=k,
@@ -104,22 +107,16 @@ def main():
 
         def step_fn(inputs):
             """Per-Replica step function."""
-            images = inputs['image']
-            labels= inputs['label']
-            BATCH_SIZE = tf.shape(images)[0]
-
-            main_shuffle = tf.random.shuffle(tf.tile(
-                tf.range(BATCH_SIZE), [batch_repetitions]))
-            to_shuffle = tf.cast(tf.cast(tf.shape(main_shuffle)[0], tf.float32),tf.int32)
-            shuffle_indices = [
-                tf.concat([tf.random.shuffle(main_shuffle[:to_shuffle]),
-                           main_shuffle[to_shuffle:]], axis=0)
-                for _ in range(M)]
-            images = tf.stack([tf.gather(images, indices, axis=0)
-                               for indices in shuffle_indices], axis=1)
-            labels = tf.stack([tf.gather(labels, indices, axis=0)
-                               for indices in shuffle_indices], axis=1)
-            labels = tf.one_hot(labels, 10)
+            images = inputs[0]
+            labels= inputs[1]
+            labels= tf.one_hot(labels, classes)
+            pre_shuffle_im= tf.reshape(images,(-1,images.shape[2],images.shape[3],images.shape[4]))
+            pre_shuffle_lab= tf.reshape(labels,(-1,labels.shape[2]))
+            main_shuffle = tf.random.shuffle(tf.range(global_batch_size*M))
+            shuffled_im = tf.gather(pre_shuffle_im,main_shuffle,axis=0)
+            shufffled_lab = tf.gather(pre_shuffle_lab,main_shuffle,axis=0)
+            images= tf.reshape(shuffled_im,(images.shape))
+            labels = tf.reshape(shufffled_lab,(labels.shape))
             with tf.GradientTape() as tape:
                 logits = model(images, training=True)
                 negative_log_likelihood = tf.reduce_mean(tf.reduce_sum(
@@ -148,7 +145,7 @@ def main():
 
 
         try:
-            strategy.run(step_fn, args=next_batch)
+            strategy.run(step_fn, args=(next_batch,))
         except (StopIteration, tf.errors.OutOfRangeError):
             print("end of dataset")
             return
@@ -162,9 +159,7 @@ def main():
             """Per-Replica StepFn."""
             images = inputs['image']
             labels= inputs['label']
-            images = tf.tile(
-                tf.expand_dims(images, 1), [1, M, 1, 1, 1])
-            labels = tf.one_hot(labels, 10)
+            labels = tf.squeeze(tf.one_hot(labels, classes))
             logits = model(images, training=False)
             logits = tf.squeeze(logits)
             probabilities = tf.nn.softmax(logits)
@@ -187,7 +182,7 @@ def main():
             test_metrics['test/negative_log_likelihood'].update_state(negative_log_likelihood)
             test_metrics['test/accuracy'].update_state(labels, probabilities)
         try:
-            strategy.run(step_fn, args=next_batch)
+            strategy.run(step_fn, args=(next_batch,))
         except (StopIteration, tf.errors.OutOfRangeError):
             print("end of dataset")
             return

@@ -11,11 +11,11 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 global_batch_size = 256  # 512
 # Number of subnetworks (baseline=3)
-M = 3
+M = 1
 batch_repetitions = 1
 l2_reg = 3e-4
 
-RUN_ID = '0003'
+RUN_ID = '0005'
 SECTION = 'Cifar10'
 PARENT_FOLDER = os.getcwd()
 RUN_FOLDER = 'run/{}/'.format(SECTION)
