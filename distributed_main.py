@@ -98,8 +98,8 @@ def main():
             logging.info('Loaded checkpoint %s', latest_checkpoint)
             initial_epoch = optimizer.iterations.numpy() // steps_per_epoch
 
-    @tf.function
-    def train_step(iterator):
+
+    def train_step(next_batch):
         """Training step function."""
 
         def step_fn(inputs):
@@ -146,16 +146,16 @@ def main():
             training_metrics['train/negative_log_likelihood'].update_state(negative_log_likelihood)
             training_metrics['train/accuracy'].update_state(flat_labels, probabilities)
 
+
         try:
-            strategy.run(step_fn, args=(next(iterator),))
+            strategy.run(step_fn, args=next_batch)
         except (StopIteration, tf.errors.OutOfRangeError):
             print("end of dataset")
             return
             # if StopIteration is raised, break from loop
 
 
-    @tf.function
-    def test_step(iterator):
+    def test_step(next_batch):
         """Evaluation StepFn."""
 
         def step_fn(inputs):
@@ -187,7 +187,7 @@ def main():
             test_metrics['test/negative_log_likelihood'].update_state(negative_log_likelihood)
             test_metrics['test/accuracy'].update_state(labels, probabilities)
         try:
-            strategy.run(step_fn, args=(next(iterator),))
+            strategy.run(step_fn, args=next_batch)
         except (StopIteration, tf.errors.OutOfRangeError):
             print("end of dataset")
             return
@@ -198,7 +198,8 @@ def main():
         logging.info("Epoch: {}".format(epoch))
         t1 = time.time()
         for step in range(steps_per_epoch):
-            train_step(train_iterator)
+            batch = next(train_iterator)
+            train_step(batch)
             current_step = epoch * steps_per_epoch + (step + 1)
             max_steps = steps_per_epoch * EPOCHS
         t2 = time.time()
@@ -216,7 +217,8 @@ def main():
         test_iterator = iter(test_data)
         t3 = time.time()
         for step in range(steps_per_eval):
-            test_step(test_iterator)
+            test_batch = next(test_iterator)
+            test_step(test_batch)
         t4 = time.time()
         test_metric = {}
         for name, metric in test_metrics.items():

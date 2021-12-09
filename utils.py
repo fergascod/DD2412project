@@ -1,6 +1,7 @@
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
+
 class WarmUpPiecewiseConstantSchedule(
     tf.keras.optimizers.schedules.LearningRateSchedule):
     """
@@ -58,11 +59,11 @@ class ExpectedCalibrationError(tf.keras.metrics.Metric):
     def update_state(self, labels, probabilities):
         pred_labels = tf.math.argmax(probabilities, axis=-1)
         pred_probs = tf.math.reduce_max(probabilities, axis=-1)
-        correct_preds = tf.math.equal(pred_labels,tf.cast(labels, pred_labels.dtype))
+        correct_preds = tf.math.equal(pred_labels, tf.cast(labels, pred_labels.dtype))
         correct_preds = tf.cast(correct_preds, float)
         custom_binning_score = pred_probs
         bin_indices = tf.histogram_fixed_width_bins(
-            custom_binning_score,tf.constant([0., 1.], float), nbins=self.num_bins)
+            custom_binning_score, tf.constant([0., 1.], float), nbins=self.num_bins)
         batch_correct_sums = tf.math.unsorted_segment_sum(
             data=correct_preds,
             segment_ids=bin_indices,
@@ -96,8 +97,8 @@ class ExpectedCalibrationError(tf.keras.metrics.Metric):
 
 def load_dataset(dataset, tr_batch_size, test_batch_size):
     ds_info = tfds.builder(dataset).info
-    training_data=tfds.load(dataset, split='train', shuffle_files=True, batch_size=tr_batch_size)
-    test_data = tfds.load(dataset, split='test', shuffle_files=True, batch_size=test_batch_size)
+    training_data = tfds.load(dataset, split='train', shuffle_files=True,as_supervised=True, batch_size=-1)
+    test_data = tfds.load(dataset, split='test', shuffle_files=True,as_supervised=True, batch_size=-1)
     num_labels = ds_info.features['label'].num_classes
     training_size = ds_info.splits['train'].num_examples
     test_size = ds_info.splits['test'].num_examples
@@ -106,17 +107,37 @@ def load_dataset(dataset, tr_batch_size, test_batch_size):
 
 
 
+
+def create_M_structure(tr_set,test_set,M, batch_repetitions,train_batch_size, test_batch_size):
+    AUTO = tf.data.AUTOTUNE
+    main_shuffle = tf.random.shuffle(tf.tile(tf.range(train_batch_size), [batch_repetitions]))
+    to_shuffle = tf.shape(main_shuffle)[0]
+    shuffle_indices = [
+        tf.concat([tf.random.shuffle(main_shuffle[:to_shuffle]),
+                   main_shuffle[to_shuffle:]], axis=0)
+        for _ in range(M)]
+
+    tr_set= tf.data.Dataset.from_tensor_slices(tr_set).batch(train_batch_size*M,drop_remainder=True).prefetch(AUTO).map(
+        lambda x,y:(tf.stack([tf.gather(x, indices, axis=0) for indices in shuffle_indices], axis=1),
+                    tf.stack([tf.gather(y, indices, axis=0) for indices in shuffle_indices], axis=1)),
+        num_parallel_calls=AUTO, ).shuffle(train_batch_size * 100000)
+
+    test_set = tf.data.Dataset.from_tensor_slices(test_set).batch(test_batch_size,drop_remainder=True).prefetch(AUTO).map(
+        lambda x,y:(tf.tile(tf.expand_dims(x, 1), [1, M, 1, 1, 1]),
+                    y),
+        num_parallel_calls=AUTO, ).shuffle(test_batch_size * 100000)
+    return tr_set, test_set
+
+
 def compute_test_metrics(model, test_data, test_metrics, M, num_labels):
     iteratorX = iter(test_data)
     while True:
         try:
             # get the next batch
             batchX = next(iteratorX)
-            images = batchX['image']
-            labels= batchX['label']
-            images = tf.tile(
-                tf.expand_dims(images, 1), [1, M, 1, 1, 1])
-            labels = tf.one_hot(labels, num_labels)
+            images = batchX[0]
+            labels = batchX[1]
+            labels = tf.squeeze(tf.one_hot(labels, num_labels))
             logits = model(images, training=False)
             logits = tf.squeeze(logits)
             probabilities = tf.nn.softmax(logits)
@@ -140,4 +161,3 @@ def compute_test_metrics(model, test_data, test_metrics, M, num_labels):
             test_metrics['test/accuracy'].update_state(tf.reshape(labels, probabilities.shape), probabilities)
         except StopIteration:
             break
-
