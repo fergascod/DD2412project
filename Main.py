@@ -11,7 +11,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 global_batch_size = 256  # 512
 # Number of subnetworks (baseline=3)
-M = 1
+M = 3
 batch_repetitions = 1
 l2_reg = 3e-4
 
