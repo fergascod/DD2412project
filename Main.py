@@ -13,9 +13,9 @@ global_batch_size = 256  # 512
 # Number of subnetworks (baseline=3)
 M = 3
 batch_repetitions = 1
-l2_reg = 3e-4
+l2_reg = 3e-3
 
-RUN_ID = '0002'
+RUN_ID = '0006'
 SECTION = 'Cifar10'
 PARENT_FOLDER = os.getcwd()
 RUN_FOLDER = 'run/{}/'.format(SECTION)
@@ -92,7 +92,7 @@ def main():
     n, k = 28, 10
 
     lr_decay_ratio = 0.2
-    base_lr = 0.1/2
+    base_lr = 0.1/10
     lr_warmup_epochs = 1
     EPOCHS = 250
     decay_epochs = [80, 160, 180]
