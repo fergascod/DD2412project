@@ -166,7 +166,7 @@ def main():
                 model.save_weights(os.path.join(RUN_FOLDER, 'weights/best_weights.h5'))
         test_metrics_evolution.append(test_metric)
         print(f"Epoch took {t4 - t1}s. Training took {t2 - t1}s and testing {t4 - t3}s\n")
-        if patience==10:
+        if patience==20:
             print("Early stopping")
             break
 
