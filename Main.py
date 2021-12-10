@@ -156,12 +156,12 @@ def main():
             metric.reset_states()
         # If it's the first epoch test_metrics_evolution is empty and the best NLL is the first one
         if not test_metrics_evolution:
-            best_nll= test_metric['negative_log_likelihood']
+            best_nll= test_metric['test/negative_log_likelihood']
         else:
-            if test_metric['negative_log_likelihood']>best_nll:
+            if test_metric['test/negative_log_likelihood']>best_nll:
                 patience=patience+1
             else:
-                best_nll=test_metric['negative_log_likelihood']
+                best_nll=test_metric['test/negative_log_likelihood']
                 patience=0
                 model.save_weights(os.path.join(RUN_FOLDER, 'weights/best_weights.h5'))
         test_metrics_evolution.append(test_metric)
