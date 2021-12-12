@@ -13,9 +13,9 @@ global_batch_size = 256  # 512
 # Number of subnetworks (baseline=3)
 M = 3
 batch_repetitions = 1
-l2_reg = 3e-3
+l2_reg = 8e-3  # 3e-4
 
-RUN_ID = '0006'
+RUN_ID = '0007'
 SECTION = 'Cifar10'
 PARENT_FOLDER = os.getcwd()
 RUN_FOLDER = 'run/{}/'.format(SECTION)
@@ -92,7 +92,7 @@ def main():
     n, k = 28, 10
 
     lr_decay_ratio = 0.2
-    base_lr = 0.1/10
+    base_lr = 0.005  # 0.1
     lr_warmup_epochs = 1
     EPOCHS = 250
     decay_epochs = [80, 160, 180]
@@ -166,7 +166,7 @@ def main():
                 model.save_weights(os.path.join(RUN_FOLDER, 'weights/best_weights.h5'))
         test_metrics_evolution.append(test_metric)
         print(f"Epoch took {t4 - t1}s. Training took {t2 - t1}s and testing {t4 - t3}s\n")
-        if patience==20:
+        if patience==15:
             print("Early stopping")
             break
 
