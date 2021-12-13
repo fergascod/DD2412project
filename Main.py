@@ -16,8 +16,8 @@ batch_repetitions = 1
 l2_reg = 8e-4  # 3e-4
 l1_reg = 1e-5
 
-RUN_ID = '0001'
-SECTION = 'Audio'
+RUN_ID = '0009'
+SECTION = 'Cifar10'
 PARENT_FOLDER = os.getcwd()
 RUN_FOLDER = 'run/{}/'.format(SECTION)
 RUN_FOLDER += '_'.join(RUN_ID)
@@ -86,7 +86,7 @@ def main():
     test_batch_size = int(global_batch_size)
 
     # loading function parameter: 'cifar10','cifar100','imagenet', 'speech_commands' (for now)
-    tr_data, test_data, num_labels, train_dataset_size, test_dataset_size, input_shape = load_dataset('speech_commands', train_batch_size, test_batch_size)
+    tr_data, test_data, num_labels, train_dataset_size, test_dataset_size, input_shape = load_dataset('cifar10', train_batch_size, test_batch_size)
 
     tr_data, test_data= create_M_structure(tr_data, test_data, M, batch_repetitions, train_batch_size, test_batch_size)
     input_shape= [M]+input_shape
