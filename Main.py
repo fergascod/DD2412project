@@ -13,10 +13,11 @@ global_batch_size = 256  # 512
 # Number of subnetworks (baseline=3)
 M = 3
 batch_repetitions = 1
-l2_reg = 1e-2  # 3e-4
+l2_reg = 3e-4  # 3e-4
+l1_reg = 3e-4
 
-RUN_ID = '0001'
-SECTION = 'Speech'
+RUN_ID = '0008'
+SECTION = 'Cifar10'
 PARENT_FOLDER = os.getcwd()
 RUN_FOLDER = 'run/{}/'.format(SECTION)
 RUN_FOLDER += '_'.join(RUN_ID)
@@ -58,9 +59,10 @@ def train(tr_dataset, model, optimizer, metrics, num_labels):
                     if ('kernel' in var.name or 'batch_norm' in var.name or
                             'bias' in var.name):
                         filtered_variables.append(tf.reshape(var, (-1,)))
-                l2_loss = l2_reg * 2 * tf.nn.l2_loss(tf.concat(filtered_variables, axis=0))
+                # l2_loss = l2_reg * 2 * tf.nn.l2_loss(tf.concat(filtered_variables, axis=0))
+                regularization = sum(model.losses)
                 # tf.nn returns l2 loss divided by 0.5 so we need to double it
-                loss = l2_loss + negative_log_likelihood
+                loss = regularization + negative_log_likelihood
 
             grads = tape.gradient(loss, model.trainable_variables)
             optimizer.apply_gradients(zip(grads, model.trainable_variables))
@@ -84,7 +86,7 @@ def main():
     test_batch_size = int(global_batch_size)
 
     # loading function parameter: 'cifar10','cifar100','imagenet', 'speech_commands' (for now)
-    tr_data, test_data, num_labels, train_dataset_size, test_dataset_size, input_shape = load_dataset('speech_commands', train_batch_size, test_batch_size)
+    tr_data, test_data, num_labels, train_dataset_size, test_dataset_size, input_shape = load_dataset('cifar10', train_batch_size, test_batch_size)
 
     tr_data, test_data= create_M_structure(tr_data, test_data, M, batch_repetitions, train_batch_size, test_batch_size)
     input_shape= [M]+input_shape
@@ -92,7 +94,7 @@ def main():
     n, k = 28, 10
 
     lr_decay_ratio = 0.2
-    base_lr = 0.01  # 0.1
+    base_lr = 0.1  # 0.1
     lr_warmup_epochs = 1
     EPOCHS = 250
     decay_epochs = [80, 160, 180]
@@ -125,7 +127,7 @@ def main():
                                         output_dim=num_labels,
                                         n=n,
                                         k=k,
-                                        M=M)
+                                        M=M, l1=l1_reg, l2=l2_reg)
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=os.path.join(RUN_FOLDER, 'metrics/logs')
                                                           , update_freq='epoch')
     tensorboard_callback.set_model(model)
