@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-global_batch_size = 32  # 512
+global_batch_size = 1  # 512
 # Number of subnetworks (baseline=3)
 M = 3
 batch_repetitions = 1
