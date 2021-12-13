@@ -87,8 +87,8 @@ def main():
 
     # loading function parameter: 'cifar10','cifar100','imagenet', 'speech_commands' (for now)
     tr_data, test_data, num_labels, train_dataset_size, test_dataset_size, input_shape = load_dataset('speech_commands', train_batch_size, test_batch_size)
-
-    tr_data, test_data= create_M_structure(tr_data, test_data, M, batch_repetitions, train_batch_size, test_batch_size)
+    audio=True
+    tr_data, test_data= create_M_structure(tr_data, test_data, M, batch_repetitions, train_batch_size, test_batch_size, audio)
     input_shape= [M]+input_shape
     # WRN params
     n, k = 28, 10

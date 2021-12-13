@@ -111,7 +111,7 @@ def load_dataset(dataset, tr_batch_size, test_batch_size):
 
 
 
-def create_M_structure(tr_set,test_set,M, batch_repetitions,train_batch_size, test_batch_size):
+def create_M_structure(tr_set,test_set,M, batch_repetitions,train_batch_size, test_batch_size, audio=False):
     AUTO = tf.data.AUTOTUNE
     main_shuffle = tf.random.shuffle(tf.tile(tf.range(train_batch_size), [batch_repetitions]))
     to_shuffle = tf.shape(main_shuffle)[0]
@@ -124,11 +124,17 @@ def create_M_structure(tr_set,test_set,M, batch_repetitions,train_batch_size, te
         lambda x,y:(tf.stack([tf.gather(x, indices, axis=0) for indices in shuffle_indices], axis=1),
                     tf.stack([tf.gather(y, indices, axis=0) for indices in shuffle_indices], axis=1)),
         num_parallel_calls=AUTO, ).shuffle(train_batch_size * 100000)
-
-    test_set = tf.data.Dataset.from_tensor_slices(test_set).batch(test_batch_size,drop_remainder=True).prefetch(AUTO).map(
-        lambda x,y:(tf.tile(tf.expand_dims(x, 1), [1, M, 1, 1, 1]),
-                    y),
-        num_parallel_calls=AUTO, ).shuffle(test_batch_size * 100000)
+    if audio:
+        test_set = tf.data.Dataset.from_tensor_slices(test_set).batch(test_batch_size, drop_remainder=True).prefetch(
+            AUTO).map(
+            lambda x, y: (tf.tile(tf.expand_dims(x, 1), [1, M, 1]),
+                          y),
+            num_parallel_calls=AUTO, ).shuffle(test_batch_size * 100000)
+    else:
+        test_set = tf.data.Dataset.from_tensor_slices(test_set).batch(test_batch_size,drop_remainder=True).prefetch(AUTO).map(
+            lambda x,y:(tf.tile(tf.expand_dims(x, 1), [1, M, 1, 1, 1]),
+                        y),
+            num_parallel_calls=AUTO, ).shuffle(test_batch_size * 100000)
     return tr_set, test_set
 
 
