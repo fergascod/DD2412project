@@ -13,8 +13,8 @@ global_batch_size = 1  # 512
 # Number of subnetworks (baseline=3)
 M = 3
 batch_repetitions = 1
-l2_reg = 3e-4  # 3e-4
-l1_reg = 3e-4
+l2_reg = 8e-4  # 3e-4
+l1_reg = 1e-5
 
 RUN_ID = '0001'
 SECTION = 'Audio'
@@ -94,7 +94,7 @@ def main():
     n, k = 28, 10
 
     lr_decay_ratio = 0.2
-    base_lr = 0.1  # 0.1
+    base_lr = 0.005    # 0.1
     lr_warmup_epochs = 1
     EPOCHS = 250
     decay_epochs = [80, 160, 180]
@@ -168,7 +168,7 @@ def main():
                 model.save_weights(os.path.join(RUN_FOLDER, 'weights/best_weights.h5'))
         test_metrics_evolution.append(test_metric)
         print(f"Epoch took {t4 - t1}s. Training took {t2 - t1}s and testing {t4 - t3}s\n")
-        if patience==15:
+        if patience==20:
             print("Early stopping")
             break
 
