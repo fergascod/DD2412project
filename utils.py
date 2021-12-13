@@ -1,6 +1,7 @@
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
+AUTO = tf.data.AUTOTUNE
 
 class WarmUpPiecewiseConstantSchedule(
     tf.keras.optimizers.schedules.LearningRateSchedule):
@@ -97,8 +98,8 @@ class ExpectedCalibrationError(tf.keras.metrics.Metric):
 
 def load_dataset(dataset, tr_batch_size, test_batch_size):
     ds_info = tfds.builder(dataset).info
-    training_data = tfds.load(dataset, split='train', shuffle_files=True,as_supervised=True, batch_size=-1)
-    test_data = tfds.load(dataset, split='test', shuffle_files=True,as_supervised=True, batch_size=-1)
+    training_data = tfds.load(dataset, split='train[:10%]', shuffle_files=True,as_supervised=True, batch_size=-1)
+    test_data = tfds.load(dataset, split='test[:60%]', shuffle_files=True,as_supervised=True, batch_size=-1)
     num_labels = ds_info.features['label'].num_classes
     training_size = ds_info.splits['train'].num_examples
     test_size = ds_info.splits['test'].num_examples
@@ -111,8 +112,7 @@ def load_dataset(dataset, tr_batch_size, test_batch_size):
 
 
 
-def create_M_structure(tr_set,test_set,M, batch_repetitions,train_batch_size, test_batch_size):
-    AUTO = tf.data.AUTOTUNE
+def create_M_structure(tr_set,test_set,M, batch_repetitions,train_batch_size, test_batch_size, audio=False):
     main_shuffle = tf.random.shuffle(tf.tile(tf.range(train_batch_size), [batch_repetitions]))
     to_shuffle = tf.shape(main_shuffle)[0]
     shuffle_indices = [
@@ -120,15 +120,29 @@ def create_M_structure(tr_set,test_set,M, batch_repetitions,train_batch_size, te
                    main_shuffle[to_shuffle:]], axis=0)
         for _ in range(M)]
 
-    tr_set= tf.data.Dataset.from_tensor_slices(tr_set).batch(train_batch_size*M,drop_remainder=True).prefetch(AUTO).map(
-        lambda x,y:(tf.stack([tf.gather(x, indices, axis=0) for indices in shuffle_indices], axis=1),
-                    tf.stack([tf.gather(y, indices, axis=0) for indices in shuffle_indices], axis=1)),
-        num_parallel_calls=AUTO, ).shuffle(train_batch_size * 100000)
+    if audio:
+        tr_set = tf.data.Dataset.from_tensor_slices(tr_set).batch(train_batch_size * M, drop_remainder=True).prefetch(
+            AUTO).map(lambda x, y:(get_spectrogram(x),y),num_parallel_calls=AUTO).map(
+            lambda x, y: (tf.stack([tf.gather(x, indices, axis=0) for indices in shuffle_indices], axis=1),
+                          tf.stack([tf.gather(y, indices, axis=0) for indices in shuffle_indices], axis=1)),
+            num_parallel_calls=AUTO, ).shuffle(train_batch_size * 100000)
 
-    test_set = tf.data.Dataset.from_tensor_slices(test_set).batch(test_batch_size,drop_remainder=True).prefetch(AUTO).map(
-        lambda x,y:(tf.tile(tf.expand_dims(x, 1), [1, M, 1, 1, 1]),
-                    y),
-        num_parallel_calls=AUTO, ).shuffle(test_batch_size * 100000)
+        test_set = tf.data.Dataset.from_tensor_slices(test_set).batch(test_batch_size, drop_remainder=True).prefetch(
+            AUTO).map(lambda x, y:(get_spectrogram(x),y),num_parallel_calls=AUTO).map(
+            lambda x,y:(tf.tile(tf.expand_dims(x, 1), [1, M, 1, 1, 1]),
+                        y),
+            num_parallel_calls=AUTO, ).shuffle(test_batch_size * 100000)
+    else:
+        tr_set = tf.data.Dataset.from_tensor_slices(tr_set).batch(train_batch_size * M, drop_remainder=True).prefetch(
+            AUTO).map(
+            lambda x, y: (tf.stack([tf.gather(x, indices, axis=0) for indices in shuffle_indices], axis=1),
+                          tf.stack([tf.gather(y, indices, axis=0) for indices in shuffle_indices], axis=1)),
+            num_parallel_calls=AUTO, ).shuffle(train_batch_size * 100000)
+
+        test_set = tf.data.Dataset.from_tensor_slices(test_set).batch(test_batch_size,drop_remainder=True).prefetch(AUTO).map(
+            lambda x,y:(tf.tile(tf.expand_dims(x, 1), [1, M, 1, 1, 1]),
+                        y),
+            num_parallel_calls=AUTO, ).shuffle(test_batch_size * 100000)
     return tr_set, test_set
 
 
@@ -164,3 +178,24 @@ def compute_test_metrics(model, test_data, test_metrics, M, num_labels):
             test_metrics['test/accuracy'].update_state(tf.reshape(labels, probabilities.shape), probabilities)
         except StopIteration:
             break
+
+
+def get_spectrogram(waveform):
+  # Zero-padding for an audio waveform with less than 16,000 samples.
+  # Cast the waveform tensors' dtype to float32.
+  waveform = tf.cast(waveform, dtype=tf.float32)
+  # Concatenate the waveform with `zero_padding`, which ensures all audio
+  # clips are of the same length.
+  equal_length = waveform
+  # Convert the waveform to a spectrogram via a STFT.
+  spectrogram = tf.signal.stft(
+      tf.cast(waveform, dtype=tf.float32), frame_length=255, frame_step=128)
+  # Obtain the magnitude of the STFT.
+  spectrogram = tf.abs(spectrogram)
+  # Add a `channels` dimension, so that the spectrogram can be used
+  # as image-like input data with convolution layers (which expect
+  # shape (`batch_size`, `height`, `width`, `channels`).
+  spectrogram = spectrogram[..., tf.newaxis]
+  return spectrogram
+
+

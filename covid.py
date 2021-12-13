@@ -1,4 +1,4 @@
-import WRN
+import WRN_alternative
 import tensorflow as tf
 from utils import *
 import os
@@ -55,7 +55,7 @@ def read_dataset(batch_size):
     return train_ds,test_ds
 
 
-l2_reg = 3e-4
+l2_reg = 3e-3
 M = 3
 batch_repetitions = 1
 
@@ -74,7 +74,7 @@ def main():
     # WRN params
     n, k = 28, 10
     lr_decay_ratio = 0.2
-    base_lr = 0.1 * train_batch_size / 128
+    base_lr = 0.005
     lr_warmup_epochs = 1
     decay_epochs = [80, 160, 180]
     EPOCHS = 250
@@ -102,7 +102,7 @@ def main():
         'test/ece': ExpectedCalibrationError(),
     }
 
-    model = WRN.build_model(input_dims=[M] + input_shape,
+    model = WRN_alternative.build_model(input_dims=[M] + input_shape,
                             output_dim=num_classes,
                             n=n,
                             k=k,
