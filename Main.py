@@ -13,10 +13,10 @@ global_batch_size = 256  # 512
 # Number of subnetworks (baseline=3)
 M = 3
 batch_repetitions = 1
-l2_reg = 8e-3  # 3e-4
+l2_reg = 1e-2  # 3e-4
 
-RUN_ID = '0007'
-SECTION = 'Cifar10'
+RUN_ID = '0001'
+SECTION = 'Speech'
 PARENT_FOLDER = os.getcwd()
 RUN_FOLDER = 'run/{}/'.format(SECTION)
 RUN_FOLDER += '_'.join(RUN_ID)
@@ -84,7 +84,7 @@ def main():
     test_batch_size = int(global_batch_size)
 
     # loading function parameter: 'cifar10','cifar100','imagenet', 'speech_commands' (for now)
-    tr_data, test_data, num_labels, train_dataset_size, test_dataset_size, input_shape = load_dataset('cifar10', train_batch_size, test_batch_size)
+    tr_data, test_data, num_labels, train_dataset_size, test_dataset_size, input_shape = load_dataset('speech_commands', train_batch_size, test_batch_size)
 
     tr_data, test_data= create_M_structure(tr_data, test_data, M, batch_repetitions, train_batch_size, test_batch_size)
     input_shape= [M]+input_shape
@@ -92,7 +92,7 @@ def main():
     n, k = 28, 10
 
     lr_decay_ratio = 0.2
-    base_lr = 0.005  # 0.1
+    base_lr = 0.01  # 0.1
     lr_warmup_epochs = 1
     EPOCHS = 250
     decay_epochs = [80, 160, 180]
