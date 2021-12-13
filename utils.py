@@ -97,8 +97,8 @@ class ExpectedCalibrationError(tf.keras.metrics.Metric):
 
 def load_dataset(dataset, tr_batch_size, test_batch_size):
     ds_info = tfds.builder(dataset).info
-    training_data = tfds.load(dataset, split='train', shuffle_files=True,as_supervised=True, batch_size=-1)
-    test_data = tfds.load(dataset, split='test', shuffle_files=True,as_supervised=True, batch_size=-1)
+    training_data = tfds.load(dataset, split='train[20%:]', shuffle_files=True,as_supervised=True, batch_size=-1)
+    test_data = tfds.load(dataset, split='test[20%:]', shuffle_files=True,as_supervised=True, batch_size=-1)
     num_labels = ds_info.features['label'].num_classes
     training_size = ds_info.splits['train'].num_examples
     test_size = ds_info.splits['test'].num_examples
