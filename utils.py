@@ -102,7 +102,10 @@ def load_dataset(dataset, tr_batch_size, test_batch_size):
     num_labels = ds_info.features['label'].num_classes
     training_size = ds_info.splits['train'].num_examples
     test_size = ds_info.splits['test'].num_examples
-    input_dim = list(ds_info.features['image'].shape)
+    if dataset=='speech_commands':
+        input_dim = list(ds_info.features['audio'].shape)
+    else:
+        input_dim = list(ds_info.features['image'].shape)
     return training_data, test_data, num_labels, training_size, test_size, input_dim
 
 
