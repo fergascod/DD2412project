@@ -119,7 +119,8 @@ def main():
         train(training_data, model, optimizer, training_metrics, num_classes)
         t2 = time.time()
         if (epoch + 1) % 50 == 0:
-            model.save_weights(os.path.join(RUN_FOLDER, 'weights/weights_%d.h5' % epoch))
+            a=0 # don't save
+            #model.save_weights(os.path.join(RUN_FOLDER, 'weights/weights_%d.h5' % epoch))
         train_metric = {}
         for name, metric in training_metrics.items():
             train_metric[name] = metric.result().numpy()
@@ -137,7 +138,7 @@ def main():
         test_metrics_evolution.append(test_metric)
         print(f"Epoch took {t4 - t1}s. Training took {t2 - t1}s and testing {t4 - t3}s\n")
 
-    model.save_weights(os.path.join(RUN_FOLDER, 'weights/final_weights.h5'))
+    #model.save_weights(os.path.join(RUN_FOLDER, 'weights/final_weights.h5'))
     metrics_evo = (train_metrics_evolution, test_metrics_evolution)
     with open(os.path.join(RUN_FOLDER, 'metrics/metrics_evo.pickle'), 'wb') as f:
         pickle.dump(metrics_evo, f)
