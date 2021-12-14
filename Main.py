@@ -1,5 +1,4 @@
 import WRN
-import WRN_alternative
 import tensorflow as tf
 from utils import *
 import os
@@ -11,7 +10,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 global_batch_size = 16  # 512
 # Number of subnetworks (baseline=3)
-M = 1
+M = 3
 batch_repetitions = 1
 l2_reg = 8e-4  # 3e-4
 l1_reg = 1e-5
@@ -126,11 +125,11 @@ def main():
         'test/ece': ExpectedCalibrationError(),
     }
 
-    model = WRN_alternative.build_model(input_dims=input_shape,
-                                        output_dim=num_labels,
-                                        n=n,
-                                        k=k,
-                                        M=M, l1=l1_reg, l2=l2_reg)
+    model = WRN.build_model(input_dims=input_shape,
+                            output_dim=num_labels,
+                            n=n,
+                            k=k,
+                            M=M, l1=l1_reg, l2=l2_reg)
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=os.path.join(RUN_FOLDER, 'metrics/logs')
                                                           , update_freq='epoch')
     tensorboard_callback.set_model(model)

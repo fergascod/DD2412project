@@ -1,4 +1,4 @@
-import WRN_alternative
+import WRN
 import tensorflow as tf
 from utils import *
 import os
@@ -102,7 +102,7 @@ def main():
         'test/ece': ExpectedCalibrationError(),
     }
 
-    model = WRN_alternative.build_model(input_dims=[M] + input_shape,
+    model = WRN.build_model(input_dims=[M] + input_shape,
                             output_dim=num_classes,
                             n=n,
                             k=k,
