@@ -11,7 +11,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 global_batch_size = 16  # 512
 # Number of subnetworks (baseline=3)
-M = 3
+M = 1
 batch_repetitions = 1
 l2_reg = 8e-4  # 3e-4
 l1_reg = 1e-5
@@ -143,7 +143,7 @@ def main():
         t1 = time.time()
         train(tr_data, model, optimizer, training_metrics,num_labels)
         t2 = time.time()
-        if (epoch + 1) % 50 == 0:
+        if (epoch + 1) % 5 == 0:
             model.save_weights(os.path.join(RUN_FOLDER, 'weights/weights_%d.h5' % epoch))
         train_metric = {}
         for name, metric in training_metrics.items():
