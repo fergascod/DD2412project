@@ -1,10 +1,3 @@
-# TODO
+# The Mimo architecture: estimating predictive uncertainty through independent subnetworks
 
-- Replicating the paper
-  - ResNet28-10/CIFAR10 (M=3) (18th)
-    - Separation of subnetworks
-    - Try different values for M
-    - Try on COVID x-rays (1st december)
-  - ResNet28-10/CIFAR100
-  - ResNet on ImageNet
-  - Audio classification task
+This Github repository contains the code of our project where we reproduce the results of the paper "Training independent subnetworks for robust prediction" by Havasi et al. 
